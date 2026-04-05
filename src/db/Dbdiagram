@@ -1,0 +1,274 @@
+// --- HUMAN RESOURCES & USERS (6 TABLES) ---
+Table employee {
+  id int [unique]
+  personal_number varchar(10) [pk, unique]
+  id_card varchar(10) [unique]
+  first_name varchar(50)
+  last_name varchar(50)
+  phone varchar(20)
+  gender char(1)
+  birth_date date
+  email varchar(70) [unique]
+  status int 
+  marital_status int
+  dominant_hand int 
+  department_id int [ref: > department.id]
+  job_title_id int [ref: > job_title.id]
+  birth_place varchar(100)
+  occupation_id int [ref: > occupation.id]
+}
+
+Table occupation {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+}
+
+Table department {
+  id int [pk, unique]
+  name varchar(100)
+  description varchar(150)
+}
+
+Table job_title {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(150)
+}
+
+Table user {
+  id int [pk, unique]
+  username varchar(50)
+  password varchar(500)
+  role_id int [ref: > role.id]
+}
+
+Table role {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(100)
+}
+
+// --- GEOGRAPHIC LOCATION (4 TABLES) ---
+Table state {
+  id int [pk, unique]
+  name varchar(50)
+}
+
+Table city {
+  id int [pk, unique]
+  name varchar(50)
+  state_id int [ref: > state.id]
+}
+
+Table parish {
+  id int [pk, unique]
+  name varchar(50)
+  city_id int [ref: > city.id]
+}
+
+Table location {
+  id int [pk, unique]
+  name varchar(100)
+  parish_id int [ref: > parish.id]
+}
+
+// --- ACCIDENTS & INCIDENTS (12 TABLES) ---
+Table accident {
+  id int [pk, unique]
+  accident_date date
+  accident_time time
+  description varchar(500)
+  affected_property varchar(100)
+  inpsasel_file_number varchar(20) [unique]
+  status int
+  location_id int [ref: > location.id]
+  accident_type_id int [ref: > accident_type.id] 
+  period_id int [ref: > period.id]
+  user_id int [ref: > user.id]
+  damage_agent_id int [ref: > damage_agent.id]
+  contact_type_id int [ref: > contact_type.id]
+}
+
+Table accident_type {
+  id int [pk, unique]
+  code varchar(50) [unique]
+  name varchar(100) 
+  description varchar(100)
+  parent_id int [ref: > accident_type.id] 
+}
+
+Table magnitude {
+  id int [pk, unique]
+  value int 
+  description varchar(50)
+}
+
+Table period {
+  id int [pk, unique]
+  annuality int 
+}
+
+Table file_documents {
+  id int [pk, unique]
+  name varchar(20)
+  description varchar(50)
+}
+
+Table accident_document_check {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  document_id int [ref: > file_documents.id]
+  delivered boolean 
+  received_date date
+  observation varchar(200)
+}
+
+Table accident_affectation_detail {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  affectation_id int [ref: > affectation.id]
+  affectation_subject_id int [ref: > affectation_subject.id]
+  magnitude_id int [ref: > magnitude.id]
+}
+
+Table affectation_subject {
+  id int [pk, unique]
+  code varchar(50) [unique]
+  name varchar(50)
+  description varchar(100)
+  parent_id int [ref: > affectation_subject.id]
+}
+
+Table affectation {
+  id int [pk, unique]
+  code varchar(50) [unique]
+  name varchar(50)
+  description varchar(100)
+  parent_id int [ref: > affectation.id]
+}
+
+Table contact_type {
+  id int [pk, unique]
+  code varchar(50) [unique]
+  name varchar(50)
+  description varchar(100)
+  parent_id int [ref: > contact_type.id]
+}
+
+Table damage_agent {
+  id int [pk, unique]
+  code varchar(50) [unique]
+  name varchar(50)
+  description varchar(100)
+  parent_id int [ref: > damage_agent.id]
+}
+
+Table employee_accident {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  employee_id varchar(10) [ref: > employee.personal_number]
+  injury_type_id int [ref: > injury_type.id]
+  rest_days int 
+  magnitude_id int [ref: > magnitude.id]
+}
+
+Table injury_type {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+}
+
+// --- INSPECTIONS (8 TABLES) ---
+Table inspection {
+  id int [pk, unique]
+  date date
+  coordinates varchar(50)
+  location_id int [ref: > location.id]
+  employee_id varchar(10) [ref: > employee.personal_number]
+  observations varchar(1000) 
+  status_id int [ref: > inspection_status.id]
+}
+
+Table inspection_status {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+}
+
+Table extinguisher_inspection {
+  id int [pk, unique]
+  inspection_id int [ref: > inspection.id]
+  extinguisher_code varchar(20)
+  inspection_date date
+  responsible_id varchar(10) [ref: > employee.personal_number]
+  general_observations varchar(500)
+}
+
+Table extinguisher_detail {
+  id int [pk, unique]
+  agent_type_id int [ref: > agent_type.id]
+  extinguisher_inspection_id int [ref: > extinguisher_inspection.id]
+  extinguisher_number varchar(20)
+  capacity int 
+  recharge_date date
+  expiration_date date
+  general_status int 
+  observations varchar(200)
+}
+
+Table agent_type {
+  id int [pk, unique]
+  name varchar(30)
+  description varchar(50)
+}
+
+Table vehicle_inspection {
+  id int [pk, unique]
+  plate_id varchar [ref: > vehicle.plate]
+  inspection_id int [ref: > inspection.id]
+  description varchar(1000)
+}
+
+Table inspection_detail {
+  id int [pk, unique]
+  vehicle_inspection_id int [ref: > vehicle_inspection.id]
+  accessory_id int [ref: > vehicle_accessory.id]
+  status boolean 
+  quantity int 
+  observations varchar(500)
+}
+
+// --- VEHICLES (5 TABLES) ---
+Table brand {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+}
+
+Table model {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+  brand_id int [ref: > brand.id]
+}
+
+Table vehicle_type {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(50)
+}
+
+Table vehicle {
+  id int
+  plate varchar [pk, unique]
+  model_id int [ref: > model.id]
+  vehicle_type_id int [ref: > vehicle_type.id]
+  color varchar(30)
+  year int
+}
+
+Table vehicle_accessory {
+  id int [pk, unique]
+  name varchar(30)
+}
