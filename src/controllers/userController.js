@@ -1,13 +1,13 @@
-const { User, Role } = require('../models');
+const { User, Role } = require("../models");
 
-/**
- * Get all users with their roles
+/*
+  Get all users with their roles
  */
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.findAll({
-      attributes: { exclude: ['password'] },
-      include: [{ model: Role, as: 'role' }]
+      attributes: { exclude: ["password"] },
+      include: [{ model: Role, as: "role" }],
     });
     res.status(200).json(users);
   } catch (error) {
@@ -15,34 +15,34 @@ exports.getAllUsers = async (req, res, next) => {
   }
 };
 
-/**
- * Admin creates a new user
- * This function is intended to be protected by isAdmin middleware in the routes
+/*
+  Admin creates a new user
+  This function is intended to be protected by isAdmin middleware in the routes
  */
 exports.createUser = async (req, res, next) => {
   try {
     const { username, password, roleId } = req.body;
-    
+
     // Check if user already exists
     const userExists = await User.findOne({ where: { username } });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     const newUser = await User.create({ username, password, roleId });
-    
+
     // Return user info excluding password
     const userJson = newUser.toJSON();
     delete userJson.password;
-    
+
     res.status(201).json(userJson);
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Update a user
+/*
+  Update a user
  */
 exports.updateUser = async (req, res, next) => {
   try {
@@ -51,39 +51,39 @@ exports.updateUser = async (req, res, next) => {
 
     const [updatedRows] = await User.update(userData, {
       where: { id },
-      individualHooks: true // To trigger password hashing if updated
+      individualHooks: true, // To trigger password hashing if updated
     });
 
     if (updatedRows > 0) {
       const updatedUser = await User.findByPk(id, {
-        attributes: { exclude: ['password'] },
-        include: [{ model: Role, as: 'role' }]
+        attributes: { exclude: ["password"] },
+        include: [{ model: Role, as: "role" }],
       });
       return res.status(200).json(updatedUser);
     }
-    
-    return res.status(404).json({ message: 'User not found' });
+
+    return res.status(404).json({ message: "User not found" });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Delete a user
+/*
+  Delete a user
  */
 exports.deleteUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
+
     const deletedCount = await User.destroy({
-      where: { id }
+      where: { id },
     });
 
     if (deletedCount > 0) {
-      return res.status(200).json({ message: 'User deleted successfully' });
+      return res.status(200).json({ message: "User deleted successfully" });
     }
 
-    return res.status(404).json({ message: 'User not found' });
+    return res.status(404).json({ message: "User not found" });
   } catch (error) {
     next(error);
   }

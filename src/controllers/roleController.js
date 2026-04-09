@@ -1,7 +1,7 @@
-const { Role } = require('../models');
+const { Role } = require("../models");
 
-/**
- * Get all roles
+/*
+  Get all roles
  */
 exports.getAllRoles = async (req, res, next) => {
   try {
@@ -12,8 +12,8 @@ exports.getAllRoles = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new role
+/*
+  Create a new role
  */
 exports.createRole = async (req, res, next) => {
   try {

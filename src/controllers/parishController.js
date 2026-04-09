@@ -1,12 +1,12 @@
-const { Parish, Location } = require('../models');
+const { Parish, Location } = require("../models");
 
-/**
- * Get all parishes
+/*
+  Get all parishes
  */
 exports.getAllParishes = async (req, res, next) => {
   try {
     const parishes = await Parish.findAll({
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(parishes);
   } catch (error) {
@@ -14,15 +14,15 @@ exports.getAllParishes = async (req, res, next) => {
   }
 };
 
-/**
- * Get locations for a specific parish
+/*
+  Get locations for a specific parish
  */
 exports.getLocationsByParish = async (req, res, next) => {
   try {
     const { parish_id } = req.params;
     const locations = await Location.findAll({
       where: { parishId: parish_id },
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(locations);
   } catch (error) {
@@ -30,8 +30,8 @@ exports.getLocationsByParish = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new parish
+/*
+  Create a new parish
  */
 exports.createParish = async (req, res, next) => {
   try {

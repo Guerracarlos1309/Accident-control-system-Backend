@@ -1,7 +1,13 @@
-const { Brand, Model, VehicleType, Vehicle, VehicleAccessory } = require('../models');
+const {
+  Brand,
+  Model,
+  VehicleType,
+  Vehicle,
+  VehicleAccessory,
+} = require("../models");
 
-/**
- * Get all brands
+/*
+  Get all brands
  */
 exports.getBrands = async (req, res, next) => {
   try {
@@ -12,13 +18,13 @@ exports.getBrands = async (req, res, next) => {
   }
 };
 
-/**
- * Get all models with their brand
+/*
+  Get all models with their brand
  */
 exports.getModels = async (req, res, next) => {
   try {
     const models = await Model.findAll({
-      include: [{ model: Brand, as: 'brand' }]
+      include: [{ model: Brand, as: "brand" }],
     });
     res.status(200).json(models);
   } catch (error) {
@@ -26,8 +32,8 @@ exports.getModels = async (req, res, next) => {
   }
 };
 
-/**
- * Get all vehicle types
+/*
+  Get all vehicle types
  */
 exports.getVehicleTypes = async (req, res, next) => {
   try {
@@ -38,16 +44,16 @@ exports.getVehicleTypes = async (req, res, next) => {
   }
 };
 
-/**
- * Get all vehicles with full details
+/*
+  Get all vehicles with full details
  */
 exports.getVehicles = async (req, res, next) => {
   try {
     const vehicles = await Vehicle.findAll({
       include: [
-        { model: Model, as: 'model', include: [{ model: Brand, as: 'brand' }] },
-        { model: VehicleType, as: 'type' }
-      ]
+        { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
+        { model: VehicleType, as: "type" },
+      ],
     });
     res.status(200).json(vehicles);
   } catch (error) {
@@ -55,8 +61,8 @@ exports.getVehicles = async (req, res, next) => {
   }
 };
 
-/**
- * Get all accessories
+/*
+  Get all accessories
  */
 exports.getAccessories = async (req, res, next) => {
   try {
@@ -67,8 +73,8 @@ exports.getAccessories = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new vehicle
+/*
+  Create a new vehicle
  */
 exports.createVehicle = async (req, res, next) => {
   try {

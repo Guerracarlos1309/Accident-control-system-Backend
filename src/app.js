@@ -16,6 +16,8 @@ const lookupRoutes = require('./routes/lookupRoutes');
 const accidentRoutes = require('./routes/accidentRoutes');
 const vehicleRoutes = require('./routes/vehicleRoutes');
 const inspectionRoutes = require('./routes/inspectionRoutes');
+const facilityRoutes = require('./routes/facilityRoutes');
+const protectionRoutes = require('./routes/protectionRoutes');
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use('/api/lookups', lookupRoutes);
 app.use('/api/accidents', accidentRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/inspections', inspectionRoutes);
+app.use('/api/facilities', facilityRoutes);
+app.use('/api/protection', protectionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

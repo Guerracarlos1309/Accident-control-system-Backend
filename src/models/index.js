@@ -25,7 +25,7 @@ const DamageAgent = require('./DamageAgent');
 const EmployeeAccident = require('./EmployeeAccident');
 const InjuryType = require('./InjuryType');
 
-// Inspections & Vehicles Module Models
+// Inspections, Vehicles & Facilities Module Models
 const Brand = require('./Brand');
 const Model = require('./Model');
 const VehicleType = require('./VehicleType');
@@ -38,6 +38,15 @@ const ExtinguisherInspection = require('./ExtinguisherInspection');
 const ExtinguisherDetail = require('./ExtinguisherDetail');
 const VehicleInspection = require('./VehicleInspection');
 const InspectionDetail = require('./InspectionDetail');
+
+// New Module Models (Facility & Protection)
+const InstallationType = require('./InstallationType');
+const Facility = require('./Facility');
+const ProtectionType = require('./ProtectionType');
+const ProtectionEquipmentCategory = require('./ProtectionEquipmentCategory');
+const ProtectionEquipment = require('./ProtectionEquipment');
+const ProtectionInspection = require('./ProtectionInspection');
+const ProtectionInspectionDetails = require('./ProtectionInspectionDetails');
 
 // --- Associations ---
 
@@ -65,6 +74,13 @@ Parish.belongsTo(City, { foreignKey: 'city_id', as: 'city' });
 Parish.hasMany(Location, { foreignKey: 'parish_id', as: 'locations' });
 Location.belongsTo(Parish, { foreignKey: 'parish_id', as: 'parish' });
 
+// Facility Associations
+Location.hasMany(Facility, { foreignKey: 'location_id', as: 'facilities' });
+Facility.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+
+InstallationType.hasMany(Facility, { foreignKey: 'installation_type_id', as: 'facilities' });
+Facility.belongsTo(InstallationType, { foreignKey: 'installation_type_id', as: 'installationType' });
+
 // --- Accidents & Incidents Associations ---
 
 // Hierarchical Tables (Allow Null parentId)
@@ -84,7 +100,8 @@ DamageAgent.belongsTo(DamageAgent, { foreignKey: 'parent_id', as: 'parent' });
 DamageAgent.hasMany(DamageAgent, { foreignKey: 'parent_id', as: 'children' });
 
 // Accident Main Table Relationships
-Accident.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+Accident.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
+Facility.hasMany(Accident, { foreignKey: 'facility_id', as: 'accidents' });
 Accident.belongsTo(AccidentType, { foreignKey: 'accident_type_id', as: 'type' });
 Accident.belongsTo(Period, { foreignKey: 'period_id', as: 'period' });
 Accident.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -118,8 +135,8 @@ VehicleType.hasMany(Vehicle, { foreignKey: 'vehicle_type_id', as: 'vehicles' });
 Vehicle.belongsTo(VehicleType, { foreignKey: 'vehicle_type_id', as: 'type' });
 
 // Inspections
-Location.hasMany(Inspection, { foreignKey: 'location_id', as: 'inspections' });
-Inspection.belongsTo(Location, { foreignKey: 'location_id', as: 'location' });
+Facility.hasMany(Inspection, { foreignKey: 'facility_id', as: 'inspections' });
+Inspection.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
 
 Employee.hasMany(Inspection, { foreignKey: 'employee_id', targetKey: 'personalNumber', as: 'performedInspections' });
 Inspection.belongsTo(Employee, { foreignKey: 'employee_id', targetKey: 'personalNumber', as: 'inspector' });
@@ -149,6 +166,26 @@ InspectionDetail.belongsTo(VehicleInspection, { foreignKey: 'vehicle_inspection_
 VehicleAccessory.hasMany(InspectionDetail, { foreignKey: 'accessory_id', as: 'checks' });
 InspectionDetail.belongsTo(VehicleAccessory, { foreignKey: 'accessory_id', as: 'accessory' });
 
+// --- Protection Module Associations ---
+
+ProtectionType.hasMany(ProtectionEquipmentCategory, { foreignKey: 'protection_type_id', as: 'categories' });
+ProtectionEquipmentCategory.belongsTo(ProtectionType, { foreignKey: 'protection_type_id', as: 'type' });
+
+ProtectionEquipmentCategory.hasMany(ProtectionEquipment, { foreignKey: 'category_id', as: 'equipment' });
+ProtectionEquipment.belongsTo(ProtectionEquipmentCategory, { foreignKey: 'category_id', as: 'category' });
+
+Inspection.hasOne(ProtectionInspection, { foreignKey: 'inspection_id', as: 'protectionInspection' });
+ProtectionInspection.belongsTo(Inspection, { foreignKey: 'inspection_id' });
+
+Employee.hasMany(ProtectionInspection, { foreignKey: 'responsible_id', targetKey: 'personalNumber', as: 'performedProtectionInspections' });
+ProtectionInspection.belongsTo(Employee, { foreignKey: 'responsible_id', targetKey: 'personalNumber', as: 'responsible' });
+
+ProtectionInspection.hasMany(ProtectionInspectionDetails, { foreignKey: 'protection_inspection_id', as: 'details' });
+ProtectionInspectionDetails.belongsTo(ProtectionInspection, { foreignKey: 'protection_inspection_id' });
+
+ProtectionEquipmentCategory.hasMany(ProtectionInspectionDetails, { foreignKey: 'category_id', as: 'inspectionResults' });
+ProtectionInspectionDetails.belongsTo(ProtectionEquipmentCategory, { foreignKey: 'category_id', as: 'category' });
+
 module.exports = {
   sequelize,
   Role, User, Occupation, Department, JobTitle, Employee,
@@ -158,5 +195,7 @@ module.exports = {
   EmployeeAccident, InjuryType,
   Brand, Model, VehicleType, Vehicle, VehicleAccessory,
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
-  VehicleInspection, InspectionDetail
+  VehicleInspection, InspectionDetail,
+  InstallationType, Facility, ProtectionType, ProtectionEquipmentCategory, 
+  ProtectionEquipment, ProtectionInspection, ProtectionInspectionDetails
 };

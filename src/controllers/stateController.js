@@ -1,12 +1,12 @@
-const { State, City } = require('../models');
+const { State, City } = require("../models");
 
-/**
- * Get all states
+/*
+  Get all states
  */
 exports.getAllStates = async (req, res, next) => {
   try {
     const states = await State.findAll({
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(states);
   } catch (error) {
@@ -14,15 +14,15 @@ exports.getAllStates = async (req, res, next) => {
   }
 };
 
-/**
- * Get cities for a specific state
+/*
+  Get cities for a specific state
  */
 exports.getCitiesByState = async (req, res, next) => {
   try {
     const { state_id } = req.params;
     const cities = await City.findAll({
       where: { stateId: state_id },
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(cities);
   } catch (error) {
@@ -30,8 +30,8 @@ exports.getCitiesByState = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new state (Admin only logic can be applied in routes)
+/*
+  Create a new state (Admin only logic can be applied in routes)
  */
 exports.createState = async (req, res, next) => {
   try {

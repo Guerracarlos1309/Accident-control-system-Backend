@@ -16,9 +16,9 @@ const Inspection = sequelize.define('Inspection', {
     type: DataTypes.STRING(50),
     allowNull: true
   },
-  locationId: {
+  facilityId: {
     type: DataTypes.INTEGER,
-    field: 'location_id'
+    field: 'facility_id'
   },
   employeePersonalNumber: {
     type: DataTypes.STRING(10),

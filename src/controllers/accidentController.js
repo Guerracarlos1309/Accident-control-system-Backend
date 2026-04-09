@@ -1,10 +1,10 @@
-const { 
-  Accident, 
-  Location, 
-  AccidentType, 
-  Period, 
-  User, 
-  DamageAgent, 
+const {
+  Accident,
+  Location,
+  AccidentType,
+  Period,
+  User,
+  DamageAgent,
   ContactType,
   EmployeeAccident,
   AccidentDocumentCheck,
@@ -15,21 +15,21 @@ const {
   Affectation,
   AffectationSubject,
   FileDocument,
-  sequelize
-} = require('../models');
+  sequelize,
+} = require("../models");
 
-/**
- * Get all accidents with summary info
+/*
+  Get all accidents with summary info
  */
 exports.getAllAccidents = async (req, res, next) => {
   try {
     const accidents = await Accident.findAll({
       include: [
-        { model: Location, as: 'location' },
-        { model: AccidentType, as: 'type' },
-        { model: Period, as: 'period' }
+        { model: Location, as: "location" },
+        { model: AccidentType, as: "type" },
+        { model: Period, as: "period" },
       ],
-      order: [['created_at', 'DESC']]
+      order: [["created_at", "DESC"]],
     });
     res.status(200).json(accidents);
   } catch (error) {
@@ -37,47 +37,47 @@ exports.getAllAccidents = async (req, res, next) => {
   }
 };
 
-/**
- * Get full accident details by ID including all nested associations
+/*
+  Get full accident details by ID including all nested associations
  */
 exports.getAccidentById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const accident = await Accident.findByPk(id, {
       include: [
-        { model: Location, as: 'location' },
-        { model: AccidentType, as: 'type' },
-        { model: Period, as: 'period' },
-        { model: DamageAgent, as: 'damageAgent' },
-        { model: ContactType, as: 'contactType' },
-        { 
-          model: EmployeeAccident, 
-          as: 'involvedEmployees',
+        { model: Location, as: "location" },
+        { model: AccidentType, as: "type" },
+        { model: Period, as: "period" },
+        { model: DamageAgent, as: "damageAgent" },
+        { model: ContactType, as: "contactType" },
+        {
+          model: EmployeeAccident,
+          as: "involvedEmployees",
           include: [
-            { model: Employee, as: 'employee' },
-            { model: InjuryType, as: 'injuryType' },
-            { model: Magnitude, as: 'magnitude' }
-          ]
+            { model: Employee, as: "employee" },
+            { model: InjuryType, as: "injuryType" },
+            { model: Magnitude, as: "magnitude" },
+          ],
         },
-        { 
-          model: AccidentDocumentCheck, 
-          as: 'documentsCheck',
-          include: [{ model: FileDocument, as: 'document' }]
+        {
+          model: AccidentDocumentCheck,
+          as: "documentsCheck",
+          include: [{ model: FileDocument, as: "document" }],
         },
-        { 
-          model: AccidentAffectationDetail, 
-          as: 'affectationDetails',
+        {
+          model: AccidentAffectationDetail,
+          as: "affectationDetails",
           include: [
-            { model: Affectation, as: 'affectation' },
-            { model: AffectationSubject, as: 'subject' },
-            { model: Magnitude, as: 'magnitude' }
-          ]
-        }
-      ]
+            { model: Affectation, as: "affectation" },
+            { model: AffectationSubject, as: "subject" },
+            { model: Magnitude, as: "magnitude" },
+          ],
+        },
+      ],
     });
 
     if (!accident) {
-      return res.status(404).json({ message: 'Accident not found' });
+      return res.status(404).json({ message: "Accident not found" });
     }
 
     res.status(200).json(accident);
@@ -86,18 +86,18 @@ exports.getAccidentById = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new accident record
- * This handles nested creation of involved employees, documents and affectation details
+/*
+  Create a new accident record
+  This handles nested creation of involved employees, documents and affectation details
  */
 exports.createAccident = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
-    const { 
-      involvedEmployees, 
-      documentsCheck, 
-      affectationDetails, 
-      ...accidentData 
+    const {
+      involvedEmployees,
+      documentsCheck,
+      affectationDetails,
+      ...accidentData
     } = req.body;
 
     // 1. Create the main accident record
@@ -105,33 +105,37 @@ exports.createAccident = async (req, res, next) => {
 
     // 2. Create involved employees records if any
     if (involvedEmployees && Array.isArray(involvedEmployees)) {
-      const employeesToCreate = involvedEmployees.map(emp => ({
+      const employeesToCreate = involvedEmployees.map((emp) => ({
         ...emp,
-        accidentId: newAccident.id
+        accidentId: newAccident.id,
       }));
       await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
     }
 
     // 3. Create document check records if any
     if (documentsCheck && Array.isArray(documentsCheck)) {
-      const documentsToCreate = documentsCheck.map(doc => ({
+      const documentsToCreate = documentsCheck.map((doc) => ({
         ...doc,
-        accidentId: newAccident.id
+        accidentId: newAccident.id,
       }));
-      await AccidentDocumentCheck.bulkCreate(documentsToCreate, { transaction: t });
+      await AccidentDocumentCheck.bulkCreate(documentsToCreate, {
+        transaction: t,
+      });
     }
 
     // 4. Create affectation details if any
     if (affectationDetails && Array.isArray(affectationDetails)) {
-      const affectationsToCreate = affectationDetails.map(aff => ({
+      const affectationsToCreate = affectationDetails.map((aff) => ({
         ...aff,
-        accidentId: newAccident.id
+        accidentId: newAccident.id,
       }));
-      await AccidentAffectationDetail.bulkCreate(affectationsToCreate, { transaction: t });
+      await AccidentAffectationDetail.bulkCreate(affectationsToCreate, {
+        transaction: t,
+      });
     }
 
     await t.commit();
-    
+
     // Return the created accident with minimal info
     res.status(201).json(newAccident);
   } catch (error) {

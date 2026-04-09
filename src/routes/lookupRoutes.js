@@ -14,5 +14,7 @@ router.get('/affectations', lookupController.getAffectations);
 router.get('/contact-types', lookupController.getContactTypes);
 router.get('/damage-agents', lookupController.getDamageAgents);
 router.get('/injury-types', lookupController.getInjuryTypes);
+router.get('/installation-types', lookupController.getInstallationTypes);
+router.get('/protection-types', lookupController.getProtectionTypes);
 
 module.exports = router;

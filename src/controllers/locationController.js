@@ -1,12 +1,12 @@
-const { Location } = require('../models');
+const { Location } = require("../models");
 
-/**
- * Get all locations
+/*
+ Get all locations
  */
 exports.getAllLocations = async (req, res, next) => {
   try {
     const locations = await Location.findAll({
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(locations);
   } catch (error) {
@@ -14,8 +14,8 @@ exports.getAllLocations = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new location
+/*
+  Create a new location
  */
 exports.createLocation = async (req, res, next) => {
   try {

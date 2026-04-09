@@ -35,9 +35,9 @@ const Accident = sequelize.define('Accident', {
     type: DataTypes.INTEGER,
     defaultValue: 1
   },
-  locationId: {
+  facilityId: {
     type: DataTypes.INTEGER,
-    field: 'location_id'
+    field: 'facility_id'
   },
   accidentTypeId: {
     type: DataTypes.INTEGER,

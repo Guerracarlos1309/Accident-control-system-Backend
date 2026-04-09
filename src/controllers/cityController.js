@@ -1,12 +1,12 @@
-const { City, Parish } = require('../models');
+const { City, Parish } = require("../models");
 
-/**
- * Get all cities
+/*
+  Get all cities
  */
 exports.getAllCities = async (req, res, next) => {
   try {
     const cities = await City.findAll({
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(cities);
   } catch (error) {
@@ -14,15 +14,15 @@ exports.getAllCities = async (req, res, next) => {
   }
 };
 
-/**
- * Get parishes for a specific city
+/*
+  Get parishes for a specific city
  */
 exports.getParishesByCity = async (req, res, next) => {
   try {
     const { city_id } = req.params;
     const parishes = await Parish.findAll({
       where: { cityId: city_id },
-      order: [['name', 'ASC']]
+      order: [["name", "ASC"]],
     });
     res.status(200).json(parishes);
   } catch (error) {
@@ -30,8 +30,8 @@ exports.getParishesByCity = async (req, res, next) => {
   }
 };
 
-/**
- * Create a new city
+/*
+  Create a new city
  */
 exports.createCity = async (req, res, next) => {
   try {
