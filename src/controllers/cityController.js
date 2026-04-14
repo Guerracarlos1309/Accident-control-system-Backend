@@ -41,3 +41,34 @@ exports.createCity = async (req, res, next) => {
     next(error);
   }
 };
+
+/*
+  Update a city
+ */
+exports.updateCity = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const city = await City.findByPk(id);
+    if (!city) return res.status(404).json({ message: "City not found" });
+    await city.update(req.body);
+    res.status(200).json(city);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  Delete a city
+ */
+exports.deleteCity = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const city = await City.findByPk(id);
+    if (!city) return res.status(404).json({ message: "City not found" });
+    await city.destroy();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+

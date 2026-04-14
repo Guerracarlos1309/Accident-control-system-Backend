@@ -13,33 +13,28 @@ router.use(protect);
 router.get('/', vehicleController.getVehicles);
 
 /**
+ * @route   GET /api/vehicles/:plate
+ * @desc    Get vehicle by plate
+ */
+router.get('/:plate', vehicleController.getVehicleByPlate);
+
+/**
  * @route   POST /api/vehicles
  * @desc    Create a new vehicle (Admin only)
  */
 router.post('/', authorize('Administrador'), vehicleController.createVehicle);
 
 /**
- * @route   GET /api/vehicles/brands
- * @desc    Get all vehicle brands
+ * @route   PUT /api/vehicles/:plate
+ * @desc    Update a vehicle (Admin only)
  */
-router.get('/brands', vehicleController.getBrands);
+router.put('/:plate', authorize('Administrador'), vehicleController.updateVehicle);
 
 /**
- * @route   GET /api/vehicles/models
- * @desc    Get all vehicle models
+ * @route   DELETE /api/vehicles/:plate
+ * @desc    Delete a vehicle (Admin only)
  */
-router.get('/models', vehicleController.getModels);
-
-/**
- * @route   GET /api/vehicles/types
- * @desc    Get all vehicle types
- */
-router.get('/types', vehicleController.getVehicleTypes);
-
-/**
- * @route   GET /api/vehicles/accessories
- * @desc    Get all vehicle accessories
- */
-router.get('/accessories', vehicleController.getAccessories);
+router.delete('/:plate', authorize('Administrador'), vehicleController.deleteVehicle);
 
 module.exports = router;
+

@@ -31,15 +31,23 @@ exports.login = async (req, res, next) => {
       expiresIn: process.env.JWT_EXPIRES_IN || "24h",
     });
 
+    // Update last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
     res.status(200).json({
       success: true,
       token,
       user: {
         id: user.id,
         username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role ? user.role.name : null,
       },
     });
+
   } catch (error) {
     next(error);
   }

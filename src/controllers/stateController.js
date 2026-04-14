@@ -41,3 +41,34 @@ exports.createState = async (req, res, next) => {
     next(error);
   }
 };
+
+/*
+  Update a state
+ */
+exports.updateState = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const state = await State.findByPk(id);
+    if (!state) return res.status(404).json({ message: "State not found" });
+    await state.update(req.body);
+    res.status(200).json(state);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  Delete a state
+ */
+exports.deleteState = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const state = await State.findByPk(id);
+    if (!state) return res.status(404).json({ message: "State not found" });
+    await state.destroy();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+

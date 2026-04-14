@@ -24,4 +24,17 @@ router.get('/:id', accidentController.getAccidentById);
  */
 router.post('/', accidentController.createAccident);
 
+/**
+ * @route   PUT /api/accidents/:id
+ * @desc    Update an accident record
+ */
+router.put('/:id', accidentController.updateAccident);
+
+/**
+ * @route   DELETE /api/accidents/:id
+ * @desc    Delete an accident record
+ */
+router.delete('/:id', accidentController.deleteAccident);
+
 module.exports = router;
+

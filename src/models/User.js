@@ -15,14 +15,36 @@ const User = sequelize.define('User', {
     allowNull: false,
     unique: true
   },
+  email: {
+    type: DataTypes.STRING(70),
+    allowNull: true,
+    unique: true
+  },
+  firstName: {
+    type: DataTypes.STRING(50),
+    field: 'first_name'
+  },
+  lastName: {
+    type: DataTypes.STRING(50),
+    field: 'last_name'
+  },
   password: {
     type: DataTypes.STRING(500),
     allowNull: false
+  },
+  status: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1
+  },
+  lastLogin: {
+    type: DataTypes.DATE,
+    field: 'last_login'
   },
   roleId: {
     type: DataTypes.INTEGER,
     field: 'role_id'
   }
+
 }, {
   tableName: 'users',
   hooks: {

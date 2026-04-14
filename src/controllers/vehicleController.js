@@ -62,12 +62,24 @@ exports.getVehicles = async (req, res, next) => {
 };
 
 /*
-  Get all accessories
+  Get vehicle by plate
  */
-exports.getAccessories = async (req, res, next) => {
+exports.getVehicleByPlate = async (req, res, next) => {
   try {
-    const accessories = await VehicleAccessory.findAll();
-    res.status(200).json(accessories);
+    const { plate } = req.params;
+    const vehicle = await Vehicle.findOne({
+      where: { plate },
+      include: [
+        { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
+        { model: VehicleType, as: "type" },
+      ],
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    res.status(200).json(vehicle);
   } catch (error) {
     next(error);
   }
@@ -81,6 +93,57 @@ exports.createVehicle = async (req, res, next) => {
     const newVehicle = await Vehicle.create(req.body);
     res.status(201).json(newVehicle);
   } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ message: "Vehicle with this plate already exists" });
+    }
     next(error);
   }
 };
+
+/*
+  Update a vehicle
+ */
+exports.updateVehicle = async (req, res, next) => {
+  try {
+    const { plate } = req.params;
+    const [updatedRows] = await Vehicle.update(req.body, {
+      where: { plate }
+    });
+
+    if (updatedRows > 0) {
+      const updatedVehicle = await Vehicle.findOne({
+        where: { plate },
+        include: [
+          { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
+          { model: VehicleType, as: "type" },
+        ],
+      });
+      return res.status(200).json(updatedVehicle);
+    }
+
+    return res.status(404).json({ message: "Vehicle not found" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  Delete a vehicle
+ */
+exports.deleteVehicle = async (req, res, next) => {
+  try {
+    const { plate } = req.params;
+    const deletedCount = await Vehicle.destroy({
+      where: { plate }
+    });
+
+    if (deletedCount > 0) {
+      return res.status(200).json({ message: "Vehicle deleted successfully" });
+    }
+
+    return res.status(404).json({ message: "Vehicle not found" });
+  } catch (error) {
+    next(error);
+  }
+};
+

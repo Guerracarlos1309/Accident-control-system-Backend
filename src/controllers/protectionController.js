@@ -43,6 +43,17 @@ exports.updateEquipment = async (req, res, next) => {
   }
 };
 
+exports.deleteEquipment = async (req, res, next) => {
+  try {
+    const equip = await ProtectionEquipment.findByPk(req.params.id);
+    if (!equip) return res.status(404).json({ message: 'Equipment not found' });
+    await equip.destroy();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Protection Inspections
 exports.createProtectionInspection = async (req, res, next) => {
   try {
@@ -58,6 +69,44 @@ exports.createProtectionInspection = async (req, res, next) => {
     }
     
     res.status(201).json(newInspection);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateProtectionInspection = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { details, ...header } = req.body;
+    const inspection = await ProtectionInspection.findByPk(id);
+    
+    if (!inspection) return res.status(404).json({ message: 'Inspection not found' });
+    
+    await inspection.update(header);
+    
+    if (details) {
+      await ProtectionInspectionDetails.destroy({ where: { protectionInspectionId: id } });
+      if (Array.isArray(details) && details.length > 0) {
+        const detailsWithId = details.map(d => ({ 
+          ...d, 
+          protectionInspectionId: id 
+        }));
+        await ProtectionInspectionDetails.bulkCreate(detailsWithId);
+      }
+    }
+    
+    res.status(200).json(inspection);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteProtectionInspection = async (req, res, next) => {
+  try {
+    const inspection = await ProtectionInspection.findByPk(req.params.id);
+    if (!inspection) return res.status(404).json({ message: 'Inspection not found' });
+    await inspection.destroy();
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -80,3 +129,4 @@ exports.getProtectionInspections = async (req, res, next) => {
     next(error);
   }
 };
+

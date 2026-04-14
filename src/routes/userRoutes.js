@@ -13,6 +13,12 @@ router.use(protect);
 router.post('/', authorize('Administrador'), userController.createUser);
 
 /**
+ * @route   PUT /api/users/me
+ * @desc    Update current user profile
+ */
+router.put('/me', userController.updateMe);
+
+/**
  * @route   GET /api/users
  * @desc    Get all users (Only Admin)
  */

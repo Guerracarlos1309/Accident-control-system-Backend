@@ -9,12 +9,16 @@ router.use(protect);
 // Equipment
 router.get('/equipment', protectionController.getEquipment);
 router.put('/equipment/:id', protectionController.updateEquipment);
+router.delete('/equipment/:id', protectionController.deleteEquipment);
 
-// Categories
+// Categories (Lookups also available in lookupRoutes)
 router.get('/categories', protectionController.getCategories);
 
 // Inspections
 router.get('/inspections', protectionController.getProtectionInspections);
 router.post('/inspections', protectionController.createProtectionInspection);
+router.put('/inspections/:id', protectionController.updateProtectionInspection);
+router.delete('/inspections/:id', protectionController.deleteProtectionInspection);
 
 module.exports = router;
+

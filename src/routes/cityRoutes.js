@@ -21,4 +21,17 @@ router.get('/:city_id/parishes', cityController.getParishesByCity);
  */
 router.post('/', protect, authorize('Administrador'), cityController.createCity);
 
+/**
+ * @route   PUT /api/cities/:id
+ * @desc    Update a city (Admin only)
+ */
+router.put('/:id', protect, authorize('Administrador'), cityController.updateCity);
+
+/**
+ * @route   DELETE /api/cities/:id
+ * @desc    Delete a city (Admin only)
+ */
+router.delete('/:id', protect, authorize('Administrador'), cityController.deleteCity);
+
 module.exports = router;
+

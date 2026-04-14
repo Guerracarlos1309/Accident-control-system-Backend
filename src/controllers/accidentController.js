@@ -143,3 +143,97 @@ exports.createAccident = async (req, res, next) => {
     next(error);
   }
 };
+/*
+  Update an accident record
+  Handles updating nested associated tables by clearing and re-creating
+ */
+exports.updateAccident = async (req, res, next) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const {
+      involvedEmployees,
+      documentsCheck,
+      affectationDetails,
+      ...accidentData
+    } = req.body;
+
+    const accident = await Accident.findByPk(id);
+    if (!accident) {
+      await t.rollback();
+      return res.status(404).json({ message: "Accident not found" });
+    }
+
+    // 1. Update main record
+    await accident.update(accidentData, { transaction: t });
+
+    // 2. Update involved employees (Clear and re-create)
+    if (involvedEmployees) {
+      await EmployeeAccident.destroy({ where: { accidentId: id }, transaction: t });
+      if (Array.isArray(involvedEmployees)) {
+        const employeesToCreate = involvedEmployees.map((emp) => ({
+          ...emp,
+          accidentId: id,
+        }));
+        await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
+      }
+    }
+
+    // 3. Update documents check (Clear and re-create)
+    if (documentsCheck) {
+      await AccidentDocumentCheck.destroy({ where: { accidentId: id }, transaction: t });
+      if (Array.isArray(documentsCheck)) {
+        const documentsToCreate = documentsCheck.map((doc) => ({
+          ...doc,
+          accidentId: id,
+        }));
+        await AccidentDocumentCheck.bulkCreate(documentsToCreate, {
+          transaction: t,
+        });
+      }
+    }
+
+    // 4. Update affectation details (Clear and re-create)
+    if (affectationDetails) {
+      await AccidentAffectationDetail.destroy({ where: { accidentId: id }, transaction: t });
+      if (Array.isArray(affectationDetails)) {
+        const affectationsToCreate = affectationDetails.map((aff) => ({
+          ...aff,
+          accidentId: id,
+        }));
+        await AccidentAffectationDetail.bulkCreate(affectationsToCreate, {
+          transaction: t,
+        });
+      }
+    }
+
+    await t.commit();
+    res.status(200).json(accident);
+  } catch (error) {
+    await t.rollback();
+    next(error);
+  }
+};
+
+/*
+  Delete an accident record (Soft delete by status if applicable, or hard delete)
+ */
+exports.deleteAccident = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const accident = await Accident.findByPk(id);
+    if (!accident) {
+      return res.status(404).json({ message: "Accident not found" });
+    }
+
+    // Option: Soft delete by setting status to 0
+    await accident.update({ status: 0 });
+    
+    // If hard delete is preferred, uncomment below:
+    // await accident.destroy();
+
+    res.status(200).json({ message: "Accident record deactivated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};

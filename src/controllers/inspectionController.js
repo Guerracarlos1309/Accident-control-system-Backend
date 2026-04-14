@@ -153,3 +153,90 @@ exports.createInspection = async (req, res, next) => {
     next(error);
   }
 };
+/*
+  Update an inspection report
+  Handles nested updates for specialized data by clearing and re-creating
+ */
+exports.updateInspection = async (req, res, next) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const { extinguisherData, vehicleData, ...inspectionData } = req.body;
+
+    const inspection = await Inspection.findByPk(id);
+    if (!inspection) {
+      await t.rollback();
+      return res.status(404).json({ message: "Inspection report not found" });
+    }
+
+    // 1. Update general entry
+    await inspection.update(inspectionData, { transaction: t });
+
+    // 2. Update Extinguisher details if provided
+    if (extinguisherData) {
+      const { details, ...mainExtData } = extinguisherData;
+      // Find or create the sub-entry
+      let extInsp = await ExtinguisherInspection.findOne({ where: { inspectionId: id }, transaction: t });
+      if (extInsp) {
+        await extInsp.update(mainExtData, { transaction: t });
+        await ExtinguisherDetail.destroy({ where: { extinguisherInspectionId: extInsp.id }, transaction: t });
+      } else {
+        extInsp = await ExtinguisherInspection.create({ ...mainExtData, inspectionId: id }, { transaction: t });
+      }
+
+      if (details && Array.isArray(details)) {
+        await ExtinguisherDetail.bulkCreate(
+          details.map((d) => ({ ...d, extinguisherInspectionId: extInsp.id })),
+          { transaction: t },
+        );
+      }
+    }
+
+    // 3. Update Vehicle details if provided
+    if (vehicleData) {
+      const { accessoryChecks, ...mainVehData } = vehicleData;
+      let vehInsp = await VehicleInspection.findOne({ where: { inspectionId: id }, transaction: t });
+      if (vehInsp) {
+        await vehInsp.update(mainVehData, { transaction: t });
+        await InspectionDetail.destroy({ where: { vehicleInspectionId: vehInsp.id }, transaction: t });
+      } else {
+        vehInsp = await VehicleInspection.create({ ...mainVehData, inspectionId: id }, { transaction: t });
+      }
+
+      if (accessoryChecks && Array.isArray(accessoryChecks)) {
+        await InspectionDetail.bulkCreate(
+          accessoryChecks.map((c) => ({
+            ...c,
+            vehicleInspectionId: vehInsp.id,
+          })),
+          { transaction: t },
+        );
+      }
+    }
+
+    await t.commit();
+    res.status(200).json(inspection);
+  } catch (error) {
+    await t.rollback();
+    next(error);
+  }
+};
+
+/*
+  Delete an inspection report
+ */
+exports.deleteInspection = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const inspection = await Inspection.findByPk(id);
+    if (!inspection) {
+      return res.status(404).json({ message: "Inspection report not found" });
+    }
+
+    // Hard delete since these are reports
+    await inspection.destroy();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};

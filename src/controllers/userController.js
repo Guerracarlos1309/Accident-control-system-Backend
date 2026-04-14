@@ -21,7 +21,7 @@ exports.getAllUsers = async (req, res, next) => {
  */
 exports.createUser = async (req, res, next) => {
   try {
-    const { username, password, roleId } = req.body;
+    const { username, password, roleId, firstName, lastName, email } = req.body;
 
     // Check if user already exists
     const userExists = await User.findOne({ where: { username } });
@@ -29,7 +29,14 @@ exports.createUser = async (req, res, next) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const newUser = await User.create({ username, password, roleId });
+    const newUser = await User.create({
+      username,
+      password,
+      roleId,
+      firstName,
+      lastName,
+      email,
+    });
 
     // Return user info excluding password
     const userJson = newUser.toJSON();
@@ -37,9 +44,13 @@ exports.createUser = async (req, res, next) => {
 
     res.status(201).json(userJson);
   } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(400).json({ message: "Username or Email already in use" });
+    }
     next(error);
   }
 };
+
 
 /*
   Update a user
@@ -52,6 +63,33 @@ exports.updateUser = async (req, res, next) => {
     const [updatedRows] = await User.update(userData, {
       where: { id },
       individualHooks: true, // To trigger password hashing if updated
+    });
+
+    if (updatedRows > 0) {
+      const updatedUser = await User.findByPk(id, {
+        attributes: { exclude: ["password"] },
+        include: [{ model: Role, as: "role" }],
+      });
+      return res.status(200).json(updatedUser);
+    }
+
+    return res.status(404).json({ message: "User not found" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  Update the current authenticated user's profile
+ */
+exports.updateMe = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const { username, roleId, ...allowedData } = req.body; // Prevent updating role or username from profile
+
+    const [updatedRows] = await User.update(allowedData, {
+      where: { id },
+      individualHooks: true,
     });
 
     if (updatedRows > 0) {
@@ -88,3 +126,4 @@ exports.deleteUser = async (req, res, next) => {
     next(error);
   }
 };
+

@@ -21,4 +21,17 @@ router.get('/:parish_id/locations', parishController.getLocationsByParish);
  */
 router.post('/', protect, authorize('Administrador'), parishController.createParish);
 
+/**
+ * @route   PUT /api/parishes/:id
+ * @desc    Update a parish (Admin only)
+ */
+router.put('/:id', protect, authorize('Administrador'), parishController.updateParish);
+
+/**
+ * @route   DELETE /api/parishes/:id
+ * @desc    Delete a parish (Admin only)
+ */
+router.delete('/:id', protect, authorize('Administrador'), parishController.deleteParish);
+
 module.exports = router;
+

@@ -41,3 +41,34 @@ exports.createParish = async (req, res, next) => {
     next(error);
   }
 };
+
+/*
+  Update a parish
+ */
+exports.updateParish = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const parish = await Parish.findByPk(id);
+    if (!parish) return res.status(404).json({ message: "Parish not found" });
+    await parish.update(req.body);
+    res.status(200).json(parish);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  Delete a parish
+ */
+exports.deleteParish = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const parish = await Parish.findByPk(id);
+    if (!parish) return res.status(404).json({ message: "Parish not found" });
+    await parish.destroy();
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+

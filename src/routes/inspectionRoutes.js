@@ -24,4 +24,17 @@ router.get('/:id', inspectionController.getInspectionById);
  */
 router.post('/', inspectionController.createInspection);
 
+/**
+ * @route   PUT /api/inspections/:id
+ * @desc    Update an inspection report
+ */
+router.put('/:id', inspectionController.updateInspection);
+
+/**
+ * @route   DELETE /api/inspections/:id
+ * @desc    Delete an inspection report
+ */
+router.delete('/:id', inspectionController.deleteInspection);
+
 module.exports = router;
+

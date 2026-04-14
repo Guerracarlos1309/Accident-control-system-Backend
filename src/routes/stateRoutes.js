@@ -21,4 +21,16 @@ router.get('/:state_id/cities', stateController.getCitiesByState);
  */
 router.post('/', protect, authorize('Administrador'), stateController.createState);
 
+/**
+ * @route   PUT /api/states/:id
+ * @desc    Update a state (Admin only)
+ */
+router.put('/:id', protect, authorize('Administrador'), stateController.updateState);
+
+/**
+ * @route   DELETE /api/states/:id
+ * @desc    Delete a state (Admin only)
+ */
+router.delete('/:id', protect, authorize('Administrador'), stateController.deleteState);
+
 module.exports = router;
