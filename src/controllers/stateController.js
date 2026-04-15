@@ -66,9 +66,8 @@ exports.deleteState = async (req, res, next) => {
     const state = await State.findByPk(id);
     if (!state) return res.status(404).json({ message: "State not found" });
     await state.destroy();
-    res.status(204).send();
+    res.status(204).send({ message: "State deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-

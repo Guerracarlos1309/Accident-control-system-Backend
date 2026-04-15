@@ -8,6 +8,10 @@ const ProtectionEquipment = sequelize.define('ProtectionEquipment', {
     primaryKey: true,
     unique: true
   },
+  name: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
   categoryId: {
     type: DataTypes.INTEGER,
     field: 'category_id'

@@ -36,7 +36,7 @@ Table job_title {
   description varchar(150)
 }
 
-Table user {
+Table users {
   id int [pk, unique]
   username varchar(50)
   password varchar(500)
@@ -85,7 +85,7 @@ Table accident {
   location_id int [ref: > location.id]
   accident_type_id int [ref: > accident_type.id] 
   period_id int [ref: > period.id]
-  user_id int [ref: > user.id]
+  user_id int [ref: > users.id]
   damage_agent_id int [ref: > damage_agent.id]
   contact_type_id int [ref: > contact_type.id]
 }

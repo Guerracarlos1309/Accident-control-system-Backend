@@ -94,7 +94,9 @@ exports.createVehicle = async (req, res, next) => {
     res.status(201).json(newVehicle);
   } catch (error) {
     if (error.name === "SequelizeUniqueConstraintError") {
-      return res.status(400).json({ message: "Vehicle with this plate already exists" });
+      return res
+        .status(400)
+        .json({ message: "Vehicle with this plate already exists" });
     }
     next(error);
   }
@@ -107,14 +109,18 @@ exports.updateVehicle = async (req, res, next) => {
   try {
     const { plate } = req.params;
     const [updatedRows] = await Vehicle.update(req.body, {
-      where: { plate }
+      where: { plate },
     });
 
     if (updatedRows > 0) {
       const updatedVehicle = await Vehicle.findOne({
         where: { plate },
         include: [
-          { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
+          {
+            model: Model,
+            as: "model",
+            include: [{ model: Brand, as: "brand" }],
+          },
           { model: VehicleType, as: "type" },
         ],
       });
@@ -134,7 +140,7 @@ exports.deleteVehicle = async (req, res, next) => {
   try {
     const { plate } = req.params;
     const deletedCount = await Vehicle.destroy({
-      where: { plate }
+      where: { plate },
     });
 
     if (deletedCount > 0) {
@@ -146,4 +152,3 @@ exports.deleteVehicle = async (req, res, next) => {
     next(error);
   }
 };
-
