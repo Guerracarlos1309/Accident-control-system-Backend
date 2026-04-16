@@ -144,7 +144,7 @@ async function seed() {
     await User.bulkCreate([
       { id: 1, username: 'admin', password: 'admin123', roleId: 1, firstName: 'Sistema', lastName: 'Admin' },
       { id: 2, username: 'inspector1', password: 'password123', roleId: 2, firstName: 'Carlos', lastName: 'Guerra' }
-    ]);
+    ], { individualHooks: true });
 
     await Employee.bulkCreate([
       { personalNumber: 'EMP001', idCard: 'V-11', firstName: 'Juan', lastName: 'Pérez', departmentId: 1, jobTitleId: 1, occupationId: 1 },

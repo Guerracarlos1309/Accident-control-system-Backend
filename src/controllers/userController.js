@@ -85,7 +85,11 @@ exports.updateUser = async (req, res, next) => {
 exports.updateMe = async (req, res, next) => {
   try {
     const id = req.user.id;
-    const { username, roleId, ...allowedData } = req.body; // Prevent updating role or username from profile
+    const { username, roleId, name, ...otherData } = req.body; // Prevent updating role or username from profile
+
+    // Map 'name' to 'firstName' and ignore 'lastName'
+    const allowedData = { ...otherData };
+    if (name) allowedData.firstName = name;
 
     const [updatedRows] = await User.update(allowedData, {
       where: { id },
@@ -93,11 +97,20 @@ exports.updateMe = async (req, res, next) => {
     });
 
     if (updatedRows > 0) {
-      const updatedUser = await User.findByPk(id, {
+      const user = await User.findByPk(id, {
         attributes: { exclude: ["password"] },
         include: [{ model: Role, as: "role" }],
       });
-      return res.status(200).json(updatedUser);
+      
+      const simplifiedUser = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.firstName,
+        role: user.role ? user.role.name : null,
+      };
+
+      return res.status(200).json(simplifiedUser);
     }
 
     return res.status(404).json({ message: "User not found" });

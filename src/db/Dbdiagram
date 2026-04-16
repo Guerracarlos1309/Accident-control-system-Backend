@@ -187,6 +187,7 @@ Table inspection {
   location_id int [ref: > location.id]
   employee_id varchar(10) [ref: > employee.personal_number]
   observations varchar(1000) 
+  inspection_number varchar(20)
   status_id int [ref: > inspection_status.id]
 }
 

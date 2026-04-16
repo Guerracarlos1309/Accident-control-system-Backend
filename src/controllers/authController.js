@@ -21,9 +21,14 @@ exports.login = async (req, res, next) => {
       include: [{ model: Role, as: "role" }],
     });
 
-    // Check if user exists and password is correct
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    // Check if user exists
+    if (!user) {
+      return res.status(401).json({ message: "Usuario incorrecto" });
+    }
+
+    // Check if password is correct
+    if (!(await user.comparePassword(password))) {
+      return res.status(401).json({ message: "Contraseña incorrecta" });
     }
 
     // Generate JWT token
@@ -42,8 +47,7 @@ exports.login = async (req, res, next) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        name: user.firstName,
         role: user.role ? user.role.name : null,
       },
     });
@@ -62,7 +66,14 @@ exports.getMe = async (req, res, next) => {
       attributes: { exclude: ["password"] },
       include: [{ model: Role, as: "role" }],
     });
-    res.status(200).json(user);
+    const simplifiedUser = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.firstName,
+      role: user.role ? user.role.name : null,
+    };
+    res.status(200).json(simplifiedUser);
   } catch (error) {
     next(error);
   }

@@ -28,6 +28,11 @@ const Inspection = sequelize.define('Inspection', {
     type: DataTypes.STRING(1000),
     allowNull: true
   },
+  inspectionNumber: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'inspection_number'
+  },
   statusId: {
     type: DataTypes.INTEGER,
     field: 'status_id'

@@ -155,7 +155,17 @@ exports.createBrand = createItem(Brand);
 exports.updateBrand = updateItem(Brand);
 exports.deleteBrand = deleteItem(Brand);
 
-exports.getModels = getList(Model);
+exports.getModels = async (req, res, next) => {
+  try {
+    const models = await Model.findAll({
+      include: [{ model: Brand, as: "brand" }],
+      order: [["id", "ASC"]],
+    });
+    res.status(200).json(models);
+  } catch (error) {
+    next(error);
+  }
+};
 exports.createModel = createItem(Model);
 exports.updateModel = updateItem(Model);
 exports.deleteModel = deleteItem(Model);
