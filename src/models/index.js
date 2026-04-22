@@ -55,14 +55,14 @@ User.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 Role.hasMany(User, { foreignKey: 'role_id', as: 'users' });
 
 // Employee - Department, JobTitle, Occupation
-Employee.belongsTo(Department, { foreignKey: 'department_id', as: 'department' });
-Department.hasMany(Employee, { foreignKey: 'department_id', as: 'employees' });
+Employee.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
+Department.hasMany(Employee, { foreignKey: 'departmentId', as: 'employees' });
 
-Employee.belongsTo(JobTitle, { foreignKey: 'job_title_id', as: 'jobTitle' });
-JobTitle.hasMany(Employee, { foreignKey: 'job_title_id', as: 'employees' });
+Employee.belongsTo(JobTitle, { foreignKey: 'jobTitleId', as: 'jobTitle' });
+JobTitle.hasMany(Employee, { foreignKey: 'jobTitleId', as: 'employees' });
 
-Employee.belongsTo(Occupation, { foreignKey: 'occupation_id', as: 'occupation' });
-Occupation.hasMany(Employee, { foreignKey: 'occupation_id', as: 'employees' });
+Employee.belongsTo(Occupation, { foreignKey: 'occupationId', as: 'occupation' });
+Occupation.hasMany(Employee, { foreignKey: 'occupationId', as: 'employees' });
 
 // Geographic Location Associations
 State.hasMany(City, { foreignKey: 'state_id', as: 'cities' });

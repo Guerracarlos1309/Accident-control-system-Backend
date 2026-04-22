@@ -25,7 +25,11 @@ exports.getAllAccidents = async (req, res, next) => {
   try {
     const accidents = await Accident.findAll({
       include: [
-        { model: Location, as: "location" },
+        { 
+          model: Facility, 
+          as: "facility",
+          include: [{ model: Location, as: "location" }]
+        },
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
       ],
@@ -45,7 +49,11 @@ exports.getAccidentById = async (req, res, next) => {
     const { id } = req.params;
     const accident = await Accident.findByPk(id, {
       include: [
-        { model: Location, as: "location" },
+        { 
+          model: Facility, 
+          as: "facility",
+          include: [{ model: Location, as: "location" }]
+        },
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
         { model: DamageAgent, as: "damageAgent" },

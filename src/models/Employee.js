@@ -8,13 +8,13 @@ const Employee = sequelize.define('Employee', {
     unique: true
   },
   personalNumber: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(20),
     primaryKey: true,
     unique: true,
     field: 'personal_number'
   },
   idCard: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(20),
     unique: true,
     allowNull: false,
     field: 'id_card'
@@ -63,20 +63,37 @@ const Employee = sequelize.define('Employee', {
     type: DataTypes.STRING(100),
     field: 'birth_place'
   },
-  departmentId: {
-    type: DataTypes.INTEGER,
-    field: 'department_id'
+  homeAddress: {
+    type: DataTypes.STRING(255),
+    field: 'home_address'
   },
-  jobTitleId: {
-    type: DataTypes.INTEGER,
-    field: 'job_title_id'
+  educationLevel: {
+    type: DataTypes.STRING(50),
+    field: 'education_level'
   },
-  occupationId: {
-    type: DataTypes.INTEGER,
-    field: 'occupation_id'
-  }
-}, {
-  tableName: 'employee'
-});
+  hireDate: {
+    type: DataTypes.DATEONLY,
+    field: 'hire_date'
+  },
+    officePhone: {
+      type: DataTypes.STRING(20),
+      field: 'office_phone'
+    },
+    departmentId: {
+      type: DataTypes.INTEGER,
+      field: 'department_id'
+    },
+    jobTitleId: {
+      type: DataTypes.INTEGER,
+      field: 'job_title_id'
+    },
+    occupationId: {
+      type: DataTypes.INTEGER,
+      field: 'occupation_id'
+    }
+  }, {
+    tableName: 'employee',
+    underscored: true
+  });
 
 module.exports = Employee;
