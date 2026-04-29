@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const vehicleController = require('../controllers/vehicleController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/upload');
 
 // All fleet routes are protected by JWT
 router.use(protect);
@@ -22,13 +23,13 @@ router.get('/:plate', vehicleController.getVehicleByPlate);
  * @route   POST /api/vehicles
  * @desc    Create a new vehicle (Admin only)
  */
-router.post('/', authorize('Administrador'), vehicleController.createVehicle);
+router.post('/', authorize('Administrador'), upload.array('images', 10), vehicleController.createVehicle);
 
 /**
  * @route   PUT /api/vehicles/:plate
  * @desc    Update a vehicle (Admin only)
  */
-router.put('/:plate', authorize('Administrador'), vehicleController.updateVehicle);
+router.put('/:plate', authorize('Administrador'), upload.array('images', 10), vehicleController.updateVehicle);
 
 /**
  * @route   DELETE /api/vehicles/:plate

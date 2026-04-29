@@ -3,6 +3,7 @@ const {
   Model,
   VehicleType,
   Vehicle,
+  VehicleImage,
   VehicleAccessory,
 } = require("../models");
 
@@ -53,6 +54,7 @@ exports.getVehicles = async (req, res, next) => {
       include: [
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
+        { model: VehicleImage, as: "images" }
       ],
     });
     res.status(200).json(vehicles);
@@ -72,6 +74,7 @@ exports.getVehicleByPlate = async (req, res, next) => {
       include: [
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
+        { model: VehicleImage, as: "images" }
       ],
     });
 
@@ -91,6 +94,16 @@ exports.getVehicleByPlate = async (req, res, next) => {
 exports.createVehicle = async (req, res, next) => {
   try {
     const newVehicle = await Vehicle.create(req.body);
+    
+    // Process images
+    if (req.files && req.files.length > 0) {
+      const imageRecords = req.files.map(file => ({
+        plateId: newVehicle.plate,
+        imageUrl: `/uploads/employees/${file.filename}` // using same upload directory
+      }));
+      await VehicleImage.bulkCreate(imageRecords);
+    }
+    
     res.status(201).json(newVehicle);
   } catch (error) {
     if (error.name === "SequelizeUniqueConstraintError") {
@@ -111,6 +124,32 @@ exports.updateVehicle = async (req, res, next) => {
     const [updatedRows] = await Vehicle.update(req.body, {
       where: { plate },
     });
+    
+    // Process deleted images
+    if (req.body.deletedImageIds) {
+      let idsToDelete = req.body.deletedImageIds;
+      if (!Array.isArray(idsToDelete)) {
+        idsToDelete = [idsToDelete]; // Convert single string to array if only one
+      }
+      
+      // Destroy those specific images from database
+      await VehicleImage.destroy({
+        where: {
+          id: idsToDelete,
+          plateId: plate
+        }
+      });
+      // Optionally we could fs.unlink the actual files here, but DB cleanup is most critical
+    }
+    
+    // Process new images (append)
+    if (req.files && req.files.length > 0) {
+      const imageRecords = req.files.map(file => ({
+        plateId: plate,
+        imageUrl: `/uploads/employees/${file.filename}` 
+      }));
+      await VehicleImage.bulkCreate(imageRecords);
+    }
 
     if (updatedRows > 0) {
       const updatedVehicle = await Vehicle.findOne({
@@ -122,6 +161,7 @@ exports.updateVehicle = async (req, res, next) => {
             include: [{ model: Brand, as: "brand" }],
           },
           { model: VehicleType, as: "type" },
+          { model: VehicleImage, as: "images" }
         ],
       });
       return res.status(200).json(updatedVehicle);

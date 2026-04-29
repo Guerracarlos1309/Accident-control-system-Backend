@@ -56,6 +56,10 @@ exports.createEmployee = async (req, res, next) => {
   try {
     const employeeData = req.body;
     
+    if (req.file) {
+      employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
+    }
+    
     // Basic server-side validation for required fields
     const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'departmentId', 'jobTitleId', 'occupationId'];
     for(const field of required) {
@@ -108,6 +112,10 @@ exports.updateEmployee = async (req, res, next) => {
   try {
     const { personal_number } = req.params;
     const employeeData = req.body;
+    
+    if (req.file) {
+      employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
+    }
     
     console.log(`UPDATE REQUEST - Param ID: ${personal_number}`, employeeData);
 

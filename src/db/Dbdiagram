@@ -15,6 +15,11 @@ Table employee {
   department_id int [ref: > department.id]
   job_title_id int [ref: > job_title.id]
   birth_place varchar(100)
+  home_address varchar(255)
+  education_level varchar(50)
+  hire_date date
+  office_phone varchar(20)
+  image_url varchar(255)
   occupation_id int [ref: > occupation.id]
 }
 
@@ -49,7 +54,7 @@ Table role {
   description varchar(100)
 }
 
-// --- GEOGRAPHIC LOCATION (4 TABLES) ---
+// --- GEOGRAPHIC LOCATION & FACILITIES (6 TABLES) ---
 Table state {
   id int [pk, unique]
   name varchar(50)
@@ -73,6 +78,23 @@ Table location {
   parish_id int [ref: > parish.id]
 }
 
+Table installation_type {
+  id int [pk, unique]
+  name varchar(100)
+  description varchar(200)
+}
+
+Table facility {
+  id int [pk, unique]
+  name varchar(100)
+  coordinates varchar(500)
+  location_id int [ref: > location.id]
+  installation_type_id int [ref: > installation_type.id]
+  voltage_level varchar(10)
+  created_at datetime
+  updated_at datetime
+}
+
 // --- ACCIDENTS & INCIDENTS (12 TABLES) ---
 Table accident {
   id int [pk, unique]
@@ -82,7 +104,7 @@ Table accident {
   affected_property varchar(100)
   inpsasel_file_number varchar(20) [unique]
   status int
-  location_id int [ref: > location.id]
+  facility_id int [ref: > facility.id]
   accident_type_id int [ref: > accident_type.id] 
   period_id int [ref: > period.id]
   user_id int [ref: > users.id]
@@ -184,7 +206,7 @@ Table inspection {
   id int [pk, unique]
   date date
   coordinates varchar(50)
-  location_id int [ref: > location.id]
+  facility_id int [ref: > facility.id]
   employee_id varchar(10) [ref: > employee.personal_number]
   observations varchar(1000) 
   inspection_number varchar(20)
@@ -272,4 +294,54 @@ Table vehicle {
 Table vehicle_accessory {
   id int [pk, unique]
   name varchar(30)
+}
+
+Table vehicle_image {
+  id int [pk, unique]
+  plate_id varchar [ref: > vehicle.plate]
+  image_url varchar(255)
+}
+
+// --- PROTECTION (5 TABLES) ---
+Table protection_type {
+  id int [pk, unique]
+  name varchar(50)
+  description varchar(100)
+}
+
+Table protection_equipment_category {
+  id int [pk, unique]
+  name varchar(30)
+  protection_type_id int [ref: > protection_type.id]
+  description varchar(100)
+}
+
+Table protection_equipment {
+  id int [pk, unique]
+  name varchar(100)
+  category_id int [ref: > protection_equipment_category.id]
+  total_quantity int
+  operative_quantity int
+  last_update date
+  description varchar(200)
+  created_at datetime
+  updated_at datetime
+}
+
+Table protection_inspection {
+  id int [pk, unique]
+  inspection_id int [ref: > inspection.id]
+  responsible_id varchar(10) [ref: > employee.personal_number]
+  observations varchar(500)
+  created_at datetime
+  updated_at datetime
+}
+
+Table protection_inspection_details {
+  id int [pk, unique]
+  protection_inspection_id int [ref: > protection_inspection.id]
+  category_id int [ref: > protection_equipment_category.id]
+  total_checked int
+  operative int
+  observations varchar(200)
 }

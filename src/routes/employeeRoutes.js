@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const employeeController = require('../controllers/employeeController');
+const upload = require('../middlewares/upload');
 
 /**
  * @route   GET /api/employees
@@ -18,13 +19,13 @@ router.get('/:personal_number', employeeController.getEmployeeByPersonalNumber);
  * @route   POST /api/employees
  * @desc    Create a new employee
  */
-router.post('/', employeeController.createEmployee);
+router.post('/', upload.single('image'), employeeController.createEmployee);
 
 /**
  * @route   PUT /api/employees/:personal_number
  * @desc    Update an employee
  */
-router.put('/:personal_number', employeeController.updateEmployee);
+router.put('/:personal_number', upload.single('image'), employeeController.updateEmployee);
 
 /**
  * @route   DELETE /api/employees/:personal_number

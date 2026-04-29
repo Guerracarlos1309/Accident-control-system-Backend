@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
 
 const employeeRoutes = require('./routes/employeeRoutes');
@@ -22,11 +23,14 @@ const protectionRoutes = require('./routes/protectionRoutes');
 const app = express();
 
 // Middlewares
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static file serving for uploads
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -52,8 +56,21 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(err.status || 500).json({
-    message: err.message || 'Internal Server Error',
+  
+  let message = err.message || 'Error interno del servidor';
+  let status = err.status || 500;
+  
+  // Interceptar errores de Multer (como tamaño excedido)
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    message = 'La imagen es demasiado pesada. El tamaño máximo permitido es de 5MB.';
+    status = 400;
+  } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    message = 'Se ha recibido un archivo inesperado o en un campo incorrecto.';
+    status = 400;
+  }
+  
+  res.status(status).json({
+    message: message,
     error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });

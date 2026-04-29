@@ -90,6 +90,11 @@ const Employee = sequelize.define('Employee', {
     occupationId: {
       type: DataTypes.INTEGER,
       field: 'occupation_id'
+    },
+    imageUrl: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'image_url'
     }
   }, {
     tableName: 'employee',

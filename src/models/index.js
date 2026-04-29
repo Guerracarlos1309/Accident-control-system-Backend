@@ -30,6 +30,7 @@ const Brand = require('./Brand');
 const Model = require('./Model');
 const VehicleType = require('./VehicleType');
 const Vehicle = require('./Vehicle');
+const VehicleImage = require('./VehicleImage');
 const VehicleAccessory = require('./VehicleAccessory');
 const InspectionStatus = require('./InspectionStatus');
 const Inspection = require('./Inspection');
@@ -134,6 +135,9 @@ Vehicle.belongsTo(Model, { foreignKey: 'model_id', as: 'model' });
 VehicleType.hasMany(Vehicle, { foreignKey: 'vehicle_type_id', as: 'vehicles' });
 Vehicle.belongsTo(VehicleType, { foreignKey: 'vehicle_type_id', as: 'type' });
 
+Vehicle.hasMany(VehicleImage, { foreignKey: 'plate_id', sourceKey: 'plate', as: 'images' });
+VehicleImage.belongsTo(Vehicle, { foreignKey: 'plate_id', targetKey: 'plate', as: 'vehicle' });
+
 // Inspections
 Facility.hasMany(Inspection, { foreignKey: 'facility_id', as: 'inspections' });
 Inspection.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
@@ -193,7 +197,7 @@ module.exports = {
   Accident, AccidentType, Magnitude, Period, FileDocument, AccidentDocumentCheck, 
   AccidentAffectationDetail, AffectationSubject, Affectation, ContactType, DamageAgent, 
   EmployeeAccident, InjuryType,
-  Brand, Model, VehicleType, Vehicle, VehicleAccessory,
+  Brand, Model, VehicleType, Vehicle, VehicleImage, VehicleAccessory,
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
   VehicleInspection, InspectionDetail,
   InstallationType, Facility, ProtectionType, ProtectionEquipmentCategory, 
