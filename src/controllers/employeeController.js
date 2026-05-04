@@ -98,6 +98,8 @@ exports.createEmployee = async (req, res, next) => {
         message = `El Número de Personal ${value} ya está asignado a otro empleado`;
       else if (fieldLower === "email") 
         message = `El correo electrónico ${value} ya está en uso`;
+      else if (fieldLower === "phone")
+        message = `El número de teléfono ${value} ya está asignado a otro empleado`;
 
       return res.status(400).json({ message });
     }
@@ -161,6 +163,8 @@ exports.updateEmployee = async (req, res, next) => {
         message = `No se puede actualizar: El N° Personal ${value} ya existe`;
       else if (fieldLower === "email") 
         message = `No se puede actualizar: El correo ${value} ya está registrado`;
+      else if (fieldLower === "phone")
+        message = `No se puede actualizar: El teléfono ${value} ya pertenece a otro empleado`;
 
       return res.status(400).json({ message });
     }

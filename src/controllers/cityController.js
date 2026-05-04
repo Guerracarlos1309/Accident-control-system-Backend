@@ -1,11 +1,17 @@
-const { City, Parish } = require("../models");
+const { City, Parish, State } = require("../models");
 
 /*
   Get all cities
  */
 exports.getAllCities = async (req, res, next) => {
   try {
+    const { stateId } = req.query;
+    const where = {};
+    if (stateId) where.stateId = stateId;
+
     const cities = await City.findAll({
+      where,
+      include: [{ model: State, as: 'state', attributes: ['name'] }],
       order: [["name", "ASC"]],
     });
     res.status(200).json(cities);

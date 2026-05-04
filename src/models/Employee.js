@@ -31,7 +31,8 @@ const Employee = sequelize.define('Employee', {
   },
   phone: {
     type: DataTypes.STRING(20),
-    allowNull: true
+    allowNull: true,
+    unique: true
   },
   gender: {
     type: DataTypes.CHAR(1),

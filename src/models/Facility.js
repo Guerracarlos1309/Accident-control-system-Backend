@@ -27,6 +27,10 @@ const Facility = sequelize.define('Facility', {
   voltageLevel: {
     type: DataTypes.STRING(10),
     field: 'voltage_level'
+  },
+  status: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1 // 1: Active, 0: Inactive
   }
 }, {
   tableName: 'facility',

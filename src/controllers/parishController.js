@@ -1,11 +1,25 @@
-const { Parish, Location } = require("../models");
+const { Parish, Location, City, State } = require("../models");
 
 /*
   Get all parishes
  */
 exports.getAllParishes = async (req, res, next) => {
   try {
+    const { cityId, stateId } = req.query;
+    const where = {};
+    if (cityId) where.cityId = cityId;
+
+    const include = [{ 
+      model: City, 
+      as: 'city', 
+      attributes: ['name'],
+      where: stateId ? { stateId } : {}, // Filter city by state if stateId provided
+      include: [{ model: State, as: 'state', attributes: ['name'] }]
+    }];
+
     const parishes = await Parish.findAll({
+      where,
+      include,
       order: [["name", "ASC"]],
     });
     res.status(200).json(parishes);

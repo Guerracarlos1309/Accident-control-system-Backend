@@ -60,6 +60,11 @@ exports.updateUser = async (req, res, next) => {
     const { id } = req.params;
     const userData = req.body;
 
+    // Safeguard: Do not update password if it's an empty string
+    if (userData.password === "") {
+      delete userData.password;
+    }
+
     const [updatedRows] = await User.update(userData, {
       where: { id },
       individualHooks: true, // To trigger password hashing if updated
