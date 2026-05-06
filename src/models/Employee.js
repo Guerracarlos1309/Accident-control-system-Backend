@@ -4,7 +4,6 @@ const sequelize = require('../config/database');
 const Employee = sequelize.define('Employee', {
   id: {
     type: DataTypes.INTEGER,
-    autoIncrement: true,
     unique: true
   },
   personalNumber: {
@@ -80,9 +79,9 @@ const Employee = sequelize.define('Employee', {
       type: DataTypes.STRING(20),
       field: 'office_phone'
     },
-    departmentId: {
+    managementId: {
       type: DataTypes.INTEGER,
-      field: 'department_id'
+      field: 'management_id'
     },
     jobTitleId: {
       type: DataTypes.INTEGER,

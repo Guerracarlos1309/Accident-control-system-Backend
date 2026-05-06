@@ -13,7 +13,7 @@ const EmployeeAccident = sequelize.define('EmployeeAccident', {
     field: 'accident_id'
   },
   employeePersonalNumber: {
-    type: DataTypes.STRING(10),
+    type: DataTypes.STRING(20),
     field: 'employee_id'
   },
   injuryTypeId: {

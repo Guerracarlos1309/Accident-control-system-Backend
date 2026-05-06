@@ -15,8 +15,15 @@ const {
   Affectation,
   AffectationSubject,
   FileDocument,
+  Facility,
+  InstallationType,
+  InspectionStatus,
+  AccidentWitness,
+  Occupation,
+  Management,
   sequelize,
 } = require("../models");
+const { Op } = require("sequelize");
 
 /*
   Get all accidents with summary info
@@ -28,16 +35,24 @@ exports.getAllAccidents = async (req, res, next) => {
         { 
           model: Facility, 
           as: "facility",
-          include: [{ model: Location, as: "location" }]
+          include: ["location", "installationType"]
         },
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
+        { 
+          model: EmployeeAccident, 
+          as: "involvedEmployees",
+          include: ["employee"]
+        },
+        { model: InspectionStatus, as: "processStatus" },
+        { model: Management, as: "management" }
       ],
-      order: [["created_at", "DESC"]],
+      order: [["id", "DESC"]],
     });
     res.status(200).json(accidents);
   } catch (error) {
-    next(error);
+    console.error("ERROR EN GET ALL ACCIDENTS:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -52,17 +67,30 @@ exports.getAccidentById = async (req, res, next) => {
         { 
           model: Facility, 
           as: "facility",
-          include: [{ model: Location, as: "location" }]
+          include: [
+            { model: Location, as: "location" },
+            { model: InstallationType, as: "installationType" }
+          ]
         },
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
         { model: DamageAgent, as: "damageAgent" },
         { model: ContactType, as: "contactType" },
+        { model: Management, as: "management" },
+        { model: InspectionStatus, as: "processStatus" },
         {
           model: EmployeeAccident,
           as: "involvedEmployees",
           include: [
-            { model: Employee, as: "employee" },
+            { 
+              model: Employee, 
+              as: "employee",
+              include: [
+
+                { model: Occupation, as: "occupation" },
+                { model: Management, as: "management" }
+              ]
+            },
             { model: InjuryType, as: "injuryType" },
             { model: Magnitude, as: "magnitude" },
           ],
@@ -81,6 +109,18 @@ exports.getAccidentById = async (req, res, next) => {
             { model: Magnitude, as: "magnitude" },
           ],
         },
+        { 
+          model: require("../models").Parish, 
+          as: "parish",
+          include: [
+            { 
+              model: require("../models").City, 
+              as: "city",
+              include: [{ model: require("../models").State, as: "state" }]
+            }
+          ]
+        },
+        { model: require("../models").AccidentWitness, as: "witnesses" },
       ],
     });
 
@@ -105,10 +145,60 @@ exports.createAccident = async (req, res, next) => {
       involvedEmployees,
       documentsCheck,
       affectationDetails,
-      ...accidentData
+      witnesses,
+      incidentLocation,
+      locationType,
+      ...rawAccidentData
     } = req.body;
 
-    // 1. Create the main accident record
+    // Sanear los datos para el modelo Accident (evitar campos extra del frontend)
+    const accidentData = {
+      accidentDate: rawAccidentData.accidentDate,
+      accidentTime: rawAccidentData.accidentTime,
+      description: rawAccidentData.description,
+      affectedProperty: rawAccidentData.affectedProperty,
+      inpsaselFileNumber: rawAccidentData.inpsaselFileNumber || null,
+      status: rawAccidentData.status,
+      facilityId: rawAccidentData.facilityId ? parseInt(rawAccidentData.facilityId) : null,
+      accidentTypeId: rawAccidentData.accidentTypeId ? parseInt(rawAccidentData.accidentTypeId) : null,
+      periodId: rawAccidentData.periodId ? parseInt(rawAccidentData.periodId) : null,
+      damageAgentId: rawAccidentData.damageAgentId ? parseInt(rawAccidentData.damageAgentId) : null,
+      contactTypeId: rawAccidentData.contactTypeId ? parseInt(rawAccidentData.contactTypeId) : null,
+      processStatusId: rawAccidentData.processStatusId ? parseInt(rawAccidentData.processStatusId) : 1,
+      customAddressDetails: rawAccidentData.customAddressDetails,
+      medicalCenterName: rawAccidentData.medicalCenterName,
+      medicalCenterAddress: rawAccidentData.medicalCenterAddress,
+      medicalObservations: rawAccidentData.medicalObservations,
+      globalObservations: rawAccidentData.globalObservations,
+
+      parishId: rawAccidentData.parishId ? parseInt(rawAccidentData.parishId) : null,
+      activity: rawAccidentData.activity
+    };
+
+    // Asignar el ID del usuario que crea el reporte
+    if (req.user) {
+      accidentData.userId = req.user.id;
+    }
+
+    // 1. Generate INPSASEL File Number automatically if not provided
+    if (!accidentData.inpsaselFileNumber) {
+      const { Op } = require("sequelize");
+      const year = new Date(accidentData.accidentDate).getFullYear();
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+
+      const count = await Accident.count({
+        where: {
+          accidentDate: {
+            [Op.between]: [startDate, endDate],
+          },
+        },
+      });
+      const sequence = (count + 1).toString().padStart(4, "0");
+      accidentData.inpsaselFileNumber = `INP-${year}-${sequence}`;
+    }
+
+    // 2. Create the main accident record
     const newAccident = await Accident.create(accidentData, { transaction: t });
 
     // 2. Create involved employees records if any
@@ -123,7 +213,7 @@ exports.createAccident = async (req, res, next) => {
     // 3. Create document check records if any
     if (documentsCheck && Array.isArray(documentsCheck)) {
       const documentsToCreate = documentsCheck.map((doc) => ({
-        ...doc,
+        documentId: doc.documentId || doc.document_id,
         accidentId: newAccident.id,
       }));
       await AccidentDocumentCheck.bulkCreate(documentsToCreate, {
@@ -140,6 +230,15 @@ exports.createAccident = async (req, res, next) => {
       await AccidentAffectationDetail.bulkCreate(affectationsToCreate, {
         transaction: t,
       });
+    }
+
+    // 5. Create witnesses if any
+    if (witnesses && Array.isArray(witnesses)) {
+      const witnessesToCreate = witnesses.map((w) => ({
+        ...w,
+        accidentId: newAccident.id,
+      }));
+      await AccidentWitness.bulkCreate(witnessesToCreate, { transaction: t });
     }
 
     await t.commit();
@@ -163,8 +262,35 @@ exports.updateAccident = async (req, res, next) => {
       involvedEmployees,
       documentsCheck,
       affectationDetails,
-      ...accidentData
+      witnesses,
+      incidentLocation,
+      locationType,
+      ...rawAccidentData
     } = req.body;
+
+    // Sanear los datos para el modelo Accident
+    const accidentData = {
+      accidentDate: rawAccidentData.accidentDate,
+      accidentTime: rawAccidentData.accidentTime,
+      description: rawAccidentData.description,
+      affectedProperty: rawAccidentData.affectedProperty,
+      inpsaselFileNumber: rawAccidentData.inpsaselFileNumber,
+      status: rawAccidentData.status,
+      facilityId: rawAccidentData.facilityId ? parseInt(rawAccidentData.facilityId) : null,
+      accidentTypeId: rawAccidentData.accidentTypeId ? parseInt(rawAccidentData.accidentTypeId) : null,
+      periodId: rawAccidentData.periodId ? parseInt(rawAccidentData.periodId) : null,
+      damageAgentId: rawAccidentData.damageAgentId ? parseInt(rawAccidentData.damageAgentId) : null,
+      contactTypeId: rawAccidentData.contactTypeId ? parseInt(rawAccidentData.contactTypeId) : null,
+      processStatusId: rawAccidentData.processStatusId ? parseInt(rawAccidentData.processStatusId) : 1,
+      customAddressDetails: rawAccidentData.customAddressDetails,
+      medicalCenterName: rawAccidentData.medicalCenterName,
+      medicalCenterAddress: rawAccidentData.medicalCenterAddress,
+      medicalObservations: rawAccidentData.medicalObservations,
+      globalObservations: rawAccidentData.globalObservations,
+
+      parishId: rawAccidentData.parishId ? parseInt(rawAccidentData.parishId) : null,
+      activity: rawAccidentData.activity
+    };
 
     const accident = await Accident.findByPk(id);
     if (!accident) {
@@ -192,7 +318,7 @@ exports.updateAccident = async (req, res, next) => {
       await AccidentDocumentCheck.destroy({ where: { accidentId: id }, transaction: t });
       if (Array.isArray(documentsCheck)) {
         const documentsToCreate = documentsCheck.map((doc) => ({
-          ...doc,
+          documentId: doc.documentId || doc.document_id,
           accidentId: id,
         }));
         await AccidentDocumentCheck.bulkCreate(documentsToCreate, {
@@ -212,6 +338,18 @@ exports.updateAccident = async (req, res, next) => {
         await AccidentAffectationDetail.bulkCreate(affectationsToCreate, {
           transaction: t,
         });
+      }
+    }
+
+    // 5. Update witnesses (Clear and re-create)
+    if (witnesses) {
+      await AccidentWitness.destroy({ where: { accidentId: id }, transaction: t });
+      if (Array.isArray(witnesses)) {
+        const witnessesToCreate = witnesses.map((w) => ({
+          ...w,
+          accidentId: id,
+        }));
+        await AccidentWitness.bulkCreate(witnessesToCreate, { transaction: t });
       }
     }
 

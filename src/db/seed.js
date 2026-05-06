@@ -4,7 +4,7 @@ const {
   State, City, Parish, Location,
   Accident, AccidentType, Magnitude, Period, FileDocument, AccidentDocumentCheck, 
   AccidentAffectationDetail, AffectationSubject, Affectation, ContactType, DamageAgent, 
-  EmployeeAccident, InjuryType,
+  EmployeeAccident, InjuryType, Management,
   Brand, Model, VehicleType, Vehicle, VehicleAccessory,
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
   VehicleInspection, InspectionDetail,
@@ -69,8 +69,22 @@ async function seed() {
     ]);
 
     await FileDocument.bulkCreate([
-      { id: 1, name: 'Formulario 14-08', description: 'Declaración Inpsasel' },
-      { id: 2, name: 'Informe Médico', description: 'Resultados de evaluación' }
+      { id: 1, name: 'Declaración 24h' },
+      { id: 2, name: 'Informe Médico' },
+      { id: 3, name: 'Constancia Sede' },
+      { id: 4, name: 'Copia Cédula' },
+      { id: 5, name: 'Horario Trabajo' }
+    ]);
+
+    await Management.bulkCreate([
+      { id: 1, name: 'Distribución y Comercialización' },
+      { id: 2, name: 'Transmisión' },
+      { id: 3, name: 'Generación' },
+      { id: 4, name: 'Programación y Control de Vegetación' },
+      { id: 5, name: 'Bienes y Servicios' },
+      { id: 6, name: 'Talento Humano' },
+      { id: 7, name: 'Prevención y Protección (P&P)' },
+      { id: 8, name: 'ASHO' }
     ]);
 
     // --- FASE 2: MAESTROS DE RRHH, GEOGRAFÍA Y VEHÍCULOS (Nivel 1) ---
@@ -99,28 +113,50 @@ async function seed() {
     const p1 = await Parish.create({ id: 1, name: 'Coche', cityId: c1.id });
     const l1 = await Location.create({ id: 1, name: 'Sede Principal', parishId: p1.id });
 
+    // Táchira
+    const s2 = await State.create({ id: 2, name: 'Táchira' });
+    const c2 = await City.create({ id: 2, name: 'San Cristóbal', stateId: s2.id });
+    await Parish.bulkCreate([
+      { id: 2, name: 'San Juan Bautista', cityId: c2.id },
+      { id: 3, name: 'La Concordia', cityId: c2.id },
+      { id: 4, name: 'Pedro María Morantes', cityId: c2.id },
+      { id: 5, name: 'San Sebastián', cityId: c2.id },
+      { id: 6, name: 'Francisco Romero Lobo', cityId: c2.id }
+    ]);
+    const c3 = await City.create({ id: 3, name: 'Táriba', stateId: s2.id });
+    await City.create({ id: 4, name: 'San Antonio del Táchira', stateId: s2.id });
+
+    // Ubicaciones para Táchira
+    await Location.create({ id: 2, name: 'Sector San Cristóbal II', parishId: 2 });
+    await Location.create({ id: 3, name: 'Sector Táriba Centro', parishId: 3 });
+
     // Maestros de Accidente (Jerárquicos)
     await AccidentType.bulkCreate([
       { id: 1, code: 'LAB', name: 'Laboral', parent_id: null },
-      { id: 10, code: 'CT', name: 'En el curso del trabajo', parent_id: 1 },
-      { id: 2, code: 'TRA', name: 'Traslado', parent_id: null }
+      { id: 2, code: 'TRA', name: 'Trayecto', parent_id: null },
+      { id: 3, code: 'TEC', name: 'Técnico / Operativo', parent_id: null },
+      { id: 10, code: 'CT', name: 'En el curso del trabajo', parent_id: 1 }
     ]);
 
     await DamageAgent.bulkCreate([
       { id: 1, code: 'FIS', name: 'Físico', parent_id: null },
-      { id: 10, code: 'MEC', name: 'Mecánico', parent_id: null },
-      { id: 2, code: 'ELEC', name: 'Electricidad', parent_id: 1 }
+      { id: 2, code: 'ELE', name: 'Eléctrico', parent_id: null },
+      { id: 3, code: 'MEC', name: 'Mecánico', parent_id: null },
+      { id: 4, code: 'FAU', name: 'Fauna / Ambiente', parent_id: null },
+      { id: 20, code: 'ELEC', name: 'Electricidad', parent_id: 2 }
     ]);
 
     await ContactType.bulkCreate([
-      { id: 1, code: 'GOL', name: 'Golpeado', parent_id: null },
-      { id: 30, code: 'ELEC', name: 'Electricidad', parent_id: 1 },
-      { id: 41, code: 'CDIF', name: 'Dif Nivel', parent_id: 1 }
+      { id: 1, code: 'GOL', name: 'Golpeado por/contra', parent_id: null },
+      { id: 2, code: 'CON', name: 'Contacto Eléctrico', parent_id: null },
+      { id: 30, code: 'ELEC', name: 'Arco Eléctrico', parent_id: 2 },
+      { id: 41, code: 'CDIF', name: 'Caída a Distinto Nivel', parent_id: 1 }
     ]);
 
     await Affectation.bulkCreate([
       { id: 1, code: 'CON', name: 'Con afectación', parent_id: null },
-      { id: 10, code: 'LES', name: 'Lesión', parent_id: 1 }
+      { id: 10, code: 'LES', name: 'Lesión Corporal', parent_id: 1 },
+      { id: 11, code: 'MAT', name: 'Daño Material', parent_id: 1 }
     ]);
 
     await AffectationSubject.bulkCreate([
@@ -153,7 +189,23 @@ async function seed() {
 
     await Vehicle.create({ plate: 'ABC-123', modelId: vModel.id, vehicleTypeId: vt.id, color: 'Blanco', year: 2022 });
     
-    const fac1 = await Facility.create({ id: 1, name: 'Depósito Central', location_id: 1, installation_type_id: 1 });
+    const fac1 = await Facility.create({ 
+      id: 1, 
+      name: 'Subestación San Cristóbal II', 
+      locationId: 2, // Táchira - San Cristóbal
+      installationTypeId: 1,
+      voltageLevel: '115kV',
+      status: 1
+    });
+
+    const fac2 = await Facility.create({ 
+      id: 2, 
+      name: 'Centro de Servicio Táriba', 
+      locationId: 3, // Táchira - Táriba
+      installationTypeId: 2,
+      voltageLevel: '13.8kV',
+      status: 1
+    });
 
     const pec1 = await ProtectionEquipmentCategory.create({ id: 1, name: 'Cabeza', protection_type_id: 1 });
     await ProtectionEquipment.create({ id: 1, name: 'Casco de Seguridad', category_id: pec1.id, totalQuantity: 50, operativeQuantity: 45 });
@@ -163,17 +215,21 @@ async function seed() {
 
     const acc = await Accident.create({
       id: 1,
-      accidentDate: '2024-04-01',
-      accidentTime: '08:00:00',
-      description: 'Incidente de prueba integral',
-      locationId: 1,
-      accidentTypeId: 10,
+      accidentDate: '2026-05-01',
+      accidentTime: '09:30:00',
+      description: 'Evento técnico en pórtico de entrada por falla de aislamiento.',
+      facilityId: fac1.id,
+      accidentTypeId: 3, 
       periodId: 1,
       userId: 1,
-      damageAgentId: 10,
-      contactTypeId: 41,
-      facilityId: fac1.id,
-      status: 1
+      damageAgentId: 4,
+      contactTypeId: 2,
+      processStatusId: 1,
+      circuitName: 'SAN CRISTOBAL - TARUBA',
+      totalCustomersAffected: 2400,
+      interruptionDuration: 120,
+      loadLoss: 8.5,
+      interruptionStartTime: '09:30:00'
     });
 
     await EmployeeAccident.create({ accidentId: acc.id, employeePersonalNumber: 'EMP001', injuryTypeId: 1, magnitudeId: 4, restDays: 15 });
@@ -206,7 +262,7 @@ async function seed() {
         'accident_type', 'magnitude', 'period', 'file_documents', 'affectation', 'affectation_subject', 'injury_type', 'accident',
         'brand', 'model', 'vehicle_type', 'vehicle_accessories', 'inspection_status', 'agent_type', 'installation_type',
         'facility', 'protection_type', 'protection_equipment_category', 'protection_equipment', 'inspection', 'vehicle_inspection',
-        'extinguisher_inspection', 'protection_inspection'
+        'extinguisher_inspection', 'protection_inspection', 'management'
       ];
 
       for (const table of tables) {

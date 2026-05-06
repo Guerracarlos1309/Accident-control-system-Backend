@@ -4,7 +4,6 @@ const sequelize = require('../config/database');
 const Vehicle = sequelize.define('Vehicle', {
   id: {
     type: DataTypes.INTEGER,
-    autoIncrement: true,
     unique: true
   },
   plate: {

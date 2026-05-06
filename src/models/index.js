@@ -2,7 +2,7 @@ const sequelize = require('../config/database');
 const Role = require('./Role');
 const User = require('./User');
 const Occupation = require('./Occupation');
-const Department = require('./Department');
+
 const JobTitle = require('./JobTitle');
 const Employee = require('./Employee');
 const State = require('./State');
@@ -24,6 +24,8 @@ const ContactType = require('./ContactType');
 const DamageAgent = require('./DamageAgent');
 const EmployeeAccident = require('./EmployeeAccident');
 const InjuryType = require('./InjuryType');
+const AccidentWitness = require('./AccidentWitness');
+const Management = require('./Management');
 
 // Inspections, Vehicles & Facilities Module Models
 const Brand = require('./Brand');
@@ -57,8 +59,9 @@ User.belongsTo(Role, { foreignKey: 'role_id', as: 'role' });
 Role.hasMany(User, { foreignKey: 'role_id', as: 'users' });
 
 // Employee - Department, JobTitle, Occupation
-Employee.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
-Department.hasMany(Employee, { foreignKey: 'departmentId', as: 'employees' });
+
+Employee.belongsTo(Management, { foreignKey: 'managementId', as: 'management' });
+Management.hasMany(Employee, { foreignKey: 'managementId', as: 'employees' });
 
 Employee.belongsTo(JobTitle, { foreignKey: 'jobTitleId', as: 'jobTitle' });
 JobTitle.hasMany(Employee, { foreignKey: 'jobTitleId', as: 'employees' });
@@ -112,6 +115,12 @@ Accident.belongsTo(Period, { foreignKey: 'period_id', as: 'period' });
 Accident.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Accident.belongsTo(DamageAgent, { foreignKey: 'damage_agent_id', as: 'damageAgent' });
 Accident.belongsTo(ContactType, { foreignKey: 'contact_type_id', as: 'contactType' });
+Accident.belongsTo(InspectionStatus, { foreignKey: 'process_status_id', as: 'processStatus' });
+InspectionStatus.hasMany(Accident, { foreignKey: 'process_status_id', as: 'accidents' });
+Accident.belongsTo(Management, { foreignKey: 'management_id', as: 'management' });
+Management.hasMany(Accident, { foreignKey: 'management_id', as: 'accidents' });
+Accident.belongsTo(Parish, { foreignKey: 'parish_id', as: 'parish' });
+Parish.hasMany(Accident, { foreignKey: 'parish_id', as: 'accidents' });
 
 // Accident Details
 Accident.hasMany(AccidentDocumentCheck, { foreignKey: 'accident_id', as: 'documentsCheck' });
@@ -126,6 +135,9 @@ Accident.hasMany(EmployeeAccident, { foreignKey: 'accident_id', as: 'involvedEmp
 EmployeeAccident.belongsTo(Employee, { foreignKey: 'employee_id', targetKey: 'personalNumber', as: 'employee' });
 EmployeeAccident.belongsTo(InjuryType, { foreignKey: 'injury_type_id', as: 'injuryType' });
 EmployeeAccident.belongsTo(Magnitude, { foreignKey: 'magnitude_id', as: 'magnitude' });
+
+Accident.hasMany(AccidentWitness, { foreignKey: 'accident_id', as: 'witnesses' });
+AccidentWitness.belongsTo(Accident, { foreignKey: 'accident_id' });
 
 // --- Inspections & Vehicles Associations ---
 
@@ -196,11 +208,11 @@ ProtectionInspectionDetails.belongsTo(ProtectionEquipmentCategory, { foreignKey:
 
 module.exports = {
   sequelize,
-  Role, User, Occupation, Department, JobTitle, Employee,
+  Role, User, Occupation, JobTitle, Employee,
   State, City, Parish, Location,
   Accident, AccidentType, Magnitude, Period, FileDocument, AccidentDocumentCheck, 
   AccidentAffectationDetail, AffectationSubject, Affectation, ContactType, DamageAgent, 
-  EmployeeAccident, InjuryType,
+  EmployeeAccident, InjuryType, AccidentWitness, Management,
   Brand, Model, VehicleType, Vehicle, VehicleImage, VehicleAccessory,
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
   VehicleInspection, InspectionDetail,

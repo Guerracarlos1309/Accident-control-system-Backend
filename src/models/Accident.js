@@ -22,9 +22,10 @@ const Accident = sequelize.define('Accident', {
     type: DataTypes.STRING(500),
     allowNull: true
   },
-  affectedProperty: {
-    type: DataTypes.STRING(100),
-    field: 'affected_property'
+  managementId: {
+    type: DataTypes.INTEGER,
+    field: 'management_id',
+    allowNull: true
   },
   inpsaselFileNumber: {
     type: DataTypes.STRING(20),
@@ -58,6 +59,43 @@ const Accident = sequelize.define('Accident', {
   contactTypeId: {
     type: DataTypes.INTEGER,
     field: 'contact_type_id'
+  },
+  customAddressDetails: {
+    type: DataTypes.STRING(255),
+    field: 'custom_address_details'
+  },
+  medicalCenterName: {
+    type: DataTypes.STRING(150),
+    field: 'medical_center_name'
+  },
+  medicalCenterAddress: {
+    type: DataTypes.STRING(255),
+    field: 'medical_center_address'
+  },
+  medicalObservations: {
+    type: DataTypes.STRING(500),
+    field: 'medical_observations'
+  },
+  globalObservations: {
+    type: DataTypes.STRING(500),
+    field: 'global_observations'
+  },
+  processStatusId: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    field: 'process_status_id',
+    references: {
+      model: 'inspection_status',
+      key: 'id'
+    }
+  },
+  parishId: {
+    type: DataTypes.INTEGER,
+    field: 'parish_id'
+  },
+  activity: {
+    type: DataTypes.STRING(255),
+    allowNull: true
   }
 }, {
   tableName: 'accident',

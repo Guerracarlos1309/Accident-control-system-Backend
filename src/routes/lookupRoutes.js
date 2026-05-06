@@ -54,10 +54,6 @@ router.post('/occupations', lookupController.createOccupation);
 router.put('/occupations/:id', lookupController.updateOccupation);
 router.delete('/occupations/:id', lookupController.deleteOccupation);
 
-router.get('/departments', lookupController.getDepartments);
-router.post('/departments', lookupController.createDepartment);
-router.put('/departments/:id', lookupController.updateDepartment);
-router.delete('/departments/:id', lookupController.deleteDepartment);
 
 router.get('/job-titles', lookupController.getJobTitles);
 router.post('/job-titles', lookupController.createJobTitle);
@@ -112,6 +108,12 @@ router.get('/protection-equipment-categories', lookupController.getProtectionEqu
 router.post('/protection-equipment-categories', lookupController.createProtectionEquipmentCategory);
 router.put('/protection-equipment-categories/:id', lookupController.updateProtectionEquipmentCategory);
 router.delete('/protection-equipment-categories/:id', lookupController.deleteProtectionEquipmentCategory);
+
+// --- Organizational Lookups ---
+router.get('/managements', lookupController.getManagements);
+router.post('/managements', lookupController.createManagement);
+router.put('/managements/:id', lookupController.updateManagement);
+router.delete('/managements/:id', lookupController.deleteManagement);
 
 module.exports = router;
 

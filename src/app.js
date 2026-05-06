@@ -53,6 +53,30 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Accident Control System API is running' });
 });
 
+// Temporary Sync Route (Remove after use)
+app.get('/api/sync-database', async (req, res) => {
+  try {
+    const { sequelize } = require('./models');
+    
+    // Intento quirúrgico: Añadir solo la columna status si no existe
+    await sequelize.query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='facility' AND column_name='status') THEN
+          ALTER TABLE facility ADD COLUMN status INTEGER DEFAULT 1;
+        END IF;
+      END $$;
+    `);
+
+    res.status(200).json({ 
+      status: 'SUCCESS', 
+      message: 'Base de datos actualizada quirúrgicamente. La columna "status" ha sido verificada/añadida.' 
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'ERROR', message: error.message });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

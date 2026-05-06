@@ -1,4 +1,4 @@
-const { Employee, Department, JobTitle, Occupation } = require("../models");
+const { Employee, JobTitle, Occupation, Management } = require("../models");
 const { Op } = require("sequelize");
 
 /*
@@ -13,9 +13,10 @@ exports.getAllEmployees = async (req, res, next) => {
     const employees = await Employee.findAll({
       where: { status: statusFilter },
       include: [
-        { model: Department, as: "department" },
+
         { model: JobTitle, as: "jobTitle" },
         { model: Occupation, as: "occupation" },
+        { model: Management, as: "management" },
       ],
     });
     res.status(200).json(employees);
@@ -33,9 +34,10 @@ exports.getEmployeeByPersonalNumber = async (req, res, next) => {
     const employee = await Employee.findOne({
       where: { personalNumber: personal_number },
       include: [
-        { model: Department, as: "department" },
+
         { model: JobTitle, as: "jobTitle" },
         { model: Occupation, as: "occupation" },
+        { model: Management, as: "management" },
       ],
     });
 
@@ -61,7 +63,7 @@ exports.createEmployee = async (req, res, next) => {
     }
     
     // Basic server-side validation for required fields
-    const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'departmentId', 'jobTitleId', 'occupationId'];
+    const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'managementId', 'jobTitleId', 'occupationId'];
     for(const field of required) {
       if(!employeeData[field]) {
         return res.status(400).json({ message: "Se deben enviar todos los datos obligatorios marcados con (*)" });
@@ -129,7 +131,7 @@ exports.updateEmployee = async (req, res, next) => {
       const updatedEmployee = await Employee.findOne({
         where: { personalNumber: personal_number },
         include: [
-          { model: Department, as: "department" },
+          { model: Management, as: "management" },
           { model: JobTitle, as: "jobTitle" },
           { model: Occupation, as: "occupation" },
         ],

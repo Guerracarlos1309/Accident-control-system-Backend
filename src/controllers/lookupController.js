@@ -11,7 +11,7 @@ const {
   InstallationType,
   ProtectionType,
   Occupation,
-  Department,
+
   JobTitle,
   Brand,
   Model,
@@ -20,6 +20,7 @@ const {
   AgentType,
   InspectionStatus,
   ProtectionEquipmentCategory,
+  Management,
 } = require("../models");
 
 // Hierarchical fetch (Top level + children)
@@ -133,10 +134,7 @@ exports.createOccupation = createItem(Occupation);
 exports.updateOccupation = updateItem(Occupation);
 exports.deleteOccupation = deleteItem(Occupation);
 
-exports.getDepartments = getList(Department);
-exports.createDepartment = createItem(Department);
-exports.updateDepartment = updateItem(Department);
-exports.deleteDepartment = deleteItem(Department);
+
 
 exports.getJobTitles = getList(JobTitle);
 exports.createJobTitle = createItem(JobTitle);
@@ -201,4 +199,10 @@ exports.getProtectionEquipmentCategories = getList(ProtectionEquipmentCategory);
 exports.createProtectionEquipmentCategory = createItem(ProtectionEquipmentCategory);
 exports.updateProtectionEquipmentCategory = updateItem(ProtectionEquipmentCategory);
 exports.deleteProtectionEquipmentCategory = deleteItem(ProtectionEquipmentCategory);
+
+// Organizational Lookups
+exports.getManagements = getList(Management);
+exports.createManagement = createItem(Management);
+exports.updateManagement = updateItem(Management);
+exports.deleteManagement = deleteItem(Management);
 
