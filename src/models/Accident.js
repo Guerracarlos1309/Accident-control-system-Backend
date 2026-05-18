@@ -19,7 +19,7 @@ const Accident = sequelize.define('Accident', {
     field: 'accident_time'
   },
   description: {
-    type: DataTypes.STRING(500),
+    type: DataTypes.TEXT,
     allowNull: true
   },
   managementId: {
@@ -68,16 +68,21 @@ const Accident = sequelize.define('Accident', {
     type: DataTypes.STRING(150),
     field: 'medical_center_name'
   },
+  medicalCenterId: {
+    type: DataTypes.INTEGER,
+    field: 'medical_center_id',
+    allowNull: true
+  },
   medicalCenterAddress: {
     type: DataTypes.STRING(255),
     field: 'medical_center_address'
   },
   medicalObservations: {
-    type: DataTypes.STRING(500),
+    type: DataTypes.TEXT,
     field: 'medical_observations'
   },
   globalObservations: {
-    type: DataTypes.STRING(500),
+    type: DataTypes.TEXT,
     field: 'global_observations'
   },
   processStatusId: {
@@ -94,7 +99,7 @@ const Accident = sequelize.define('Accident', {
     field: 'parish_id'
   },
   activity: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.TEXT,
     allowNull: true
   }
 }, {

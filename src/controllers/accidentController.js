@@ -150,16 +150,18 @@ exports.createAccident = async (req, res, next) => {
       locationType,
       ...rawAccidentData
     } = req.body;
+    
+    console.log("DATOS RECIBIDOS EN EL BACKEND:", req.body);
 
     // Sanear los datos para el modelo Accident (evitar campos extra del frontend)
     const accidentData = {
       accidentDate: rawAccidentData.accidentDate,
       accidentTime: rawAccidentData.accidentTime,
-      description: rawAccidentData.description,
-      affectedProperty: rawAccidentData.affectedProperty,
+      description: req.body.description,
       inpsaselFileNumber: rawAccidentData.inpsaselFileNumber || null,
       status: rawAccidentData.status,
       facilityId: rawAccidentData.facilityId ? parseInt(rawAccidentData.facilityId) : null,
+      managementId: rawAccidentData.managementId ? parseInt(rawAccidentData.managementId) : null,
       accidentTypeId: rawAccidentData.accidentTypeId ? parseInt(rawAccidentData.accidentTypeId) : null,
       periodId: rawAccidentData.periodId ? parseInt(rawAccidentData.periodId) : null,
       damageAgentId: rawAccidentData.damageAgentId ? parseInt(rawAccidentData.damageAgentId) : null,
@@ -167,6 +169,7 @@ exports.createAccident = async (req, res, next) => {
       processStatusId: rawAccidentData.processStatusId ? parseInt(rawAccidentData.processStatusId) : 1,
       customAddressDetails: rawAccidentData.customAddressDetails,
       medicalCenterName: rawAccidentData.medicalCenterName,
+      medicalCenterId: rawAccidentData.medicalCenterId ? parseInt(rawAccidentData.medicalCenterId) : null,
       medicalCenterAddress: rawAccidentData.medicalCenterAddress,
       medicalObservations: rawAccidentData.medicalObservations,
       globalObservations: rawAccidentData.globalObservations,
@@ -204,7 +207,10 @@ exports.createAccident = async (req, res, next) => {
     // 2. Create involved employees records if any
     if (involvedEmployees && Array.isArray(involvedEmployees)) {
       const employeesToCreate = involvedEmployees.map((emp) => ({
-        ...emp,
+        employeePersonalNumber: emp.employeeId || emp.employeePersonalNumber,
+        injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
+        magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
+        restDays: emp.restDays ? parseInt(emp.restDays) : null,
         accidentId: newAccident.id,
       }));
       await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
@@ -247,6 +253,10 @@ exports.createAccident = async (req, res, next) => {
     res.status(201).json(newAccident);
   } catch (error) {
     await t.rollback();
+    console.error("ERROR CRÍTICO AL CREAR ACCIDENTE:");
+    console.error("- Mensaje:", error.message);
+    if (error.parent) console.error("- Detalle DB:", error.parent.detail || error.parent.message);
+    if (error.errors) console.error("- Validaciones:", error.errors.map(e => e.message));
     next(error);
   }
 };
@@ -272,11 +282,11 @@ exports.updateAccident = async (req, res, next) => {
     const accidentData = {
       accidentDate: rawAccidentData.accidentDate,
       accidentTime: rawAccidentData.accidentTime,
-      description: rawAccidentData.description,
-      affectedProperty: rawAccidentData.affectedProperty,
+      description: req.body.description,
       inpsaselFileNumber: rawAccidentData.inpsaselFileNumber,
       status: rawAccidentData.status,
       facilityId: rawAccidentData.facilityId ? parseInt(rawAccidentData.facilityId) : null,
+      managementId: rawAccidentData.managementId ? parseInt(rawAccidentData.managementId) : null,
       accidentTypeId: rawAccidentData.accidentTypeId ? parseInt(rawAccidentData.accidentTypeId) : null,
       periodId: rawAccidentData.periodId ? parseInt(rawAccidentData.periodId) : null,
       damageAgentId: rawAccidentData.damageAgentId ? parseInt(rawAccidentData.damageAgentId) : null,
@@ -284,6 +294,7 @@ exports.updateAccident = async (req, res, next) => {
       processStatusId: rawAccidentData.processStatusId ? parseInt(rawAccidentData.processStatusId) : 1,
       customAddressDetails: rawAccidentData.customAddressDetails,
       medicalCenterName: rawAccidentData.medicalCenterName,
+      medicalCenterId: rawAccidentData.medicalCenterId ? parseInt(rawAccidentData.medicalCenterId) : null,
       medicalCenterAddress: rawAccidentData.medicalCenterAddress,
       medicalObservations: rawAccidentData.medicalObservations,
       globalObservations: rawAccidentData.globalObservations,
@@ -306,7 +317,10 @@ exports.updateAccident = async (req, res, next) => {
       await EmployeeAccident.destroy({ where: { accidentId: id }, transaction: t });
       if (Array.isArray(involvedEmployees)) {
         const employeesToCreate = involvedEmployees.map((emp) => ({
-          ...emp,
+          employeePersonalNumber: emp.employeeId || emp.employeePersonalNumber,
+          injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
+          magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
+          restDays: emp.restDays ? parseInt(emp.restDays) : null,
           accidentId: id,
         }));
         await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
@@ -357,6 +371,10 @@ exports.updateAccident = async (req, res, next) => {
     res.status(200).json(accident);
   } catch (error) {
     await t.rollback();
+    console.error("ERROR CRÍTICO AL ACTUALIZAR ACCIDENTE:");
+    console.error("- Mensaje:", error.message);
+    if (error.parent) console.error("- Detalle DB:", error.parent.detail || error.parent.message);
+    if (error.errors) console.error("- Validaciones:", error.errors.map(e => e.message));
     next(error);
   }
 };

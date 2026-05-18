@@ -26,6 +26,7 @@ const EmployeeAccident = require('./EmployeeAccident');
 const InjuryType = require('./InjuryType');
 const AccidentWitness = require('./AccidentWitness');
 const Management = require('./Management');
+const MedicalCenter = require('./MedicalCenter');
 
 // Inspections, Vehicles & Facilities Module Models
 const Brand = require('./Brand');
@@ -122,6 +123,11 @@ Management.hasMany(Accident, { foreignKey: 'management_id', as: 'accidents' });
 Accident.belongsTo(Parish, { foreignKey: 'parish_id', as: 'parish' });
 Parish.hasMany(Accident, { foreignKey: 'parish_id', as: 'accidents' });
 
+// Medical Center Associations
+MedicalCenter.belongsTo(Parish, { foreignKey: 'parish_id', as: 'parish' });
+Accident.belongsTo(MedicalCenter, { foreignKey: 'medical_center_id', as: 'medicalCenter' });
+MedicalCenter.hasMany(Accident, { foreignKey: 'medical_center_id', as: 'accidents' });
+
 // Accident Details
 Accident.hasMany(AccidentDocumentCheck, { foreignKey: 'accident_id', as: 'documentsCheck' });
 AccidentDocumentCheck.belongsTo(FileDocument, { foreignKey: 'document_id', as: 'document' });
@@ -212,7 +218,7 @@ module.exports = {
   State, City, Parish, Location,
   Accident, AccidentType, Magnitude, Period, FileDocument, AccidentDocumentCheck, 
   AccidentAffectationDetail, AffectationSubject, Affectation, ContactType, DamageAgent, 
-  EmployeeAccident, InjuryType, AccidentWitness, Management,
+  EmployeeAccident, InjuryType, AccidentWitness, Management, MedicalCenter,
   Brand, Model, VehicleType, Vehicle, VehicleImage, VehicleAccessory,
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
   VehicleInspection, InspectionDetail,

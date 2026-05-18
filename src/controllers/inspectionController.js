@@ -13,6 +13,9 @@ const {
   Model,
   Brand,
   Facility,
+  ProtectionInspection,
+  ProtectionInspectionDetails,
+  ProtectionEquipmentCategory,
   sequelize,
 } = require("../models");
 
@@ -31,6 +34,8 @@ exports.getAllInspections = async (req, res, next) => {
         { model: Employee, as: "inspector" },
         { model: InspectionStatus, as: "status" },
         { model: VehicleInspection, as: "vehicleInspection" },
+        { model: ExtinguisherInspection, as: "extinguisherInspection" },
+        { model: ProtectionInspection, as: "protectionInspection" },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -89,6 +94,17 @@ exports.getInspectionById = async (req, res, next) => {
             },
           ],
         },
+        {
+          model: ProtectionInspection,
+          as: "protectionInspection",
+          include: [
+            {
+              model: ProtectionInspectionDetails,
+              as: "details",
+              include: [{ model: ProtectionEquipmentCategory, as: "category" }]
+            }
+          ]
+        }
       ],
     });
 
@@ -109,7 +125,7 @@ exports.getInspectionById = async (req, res, next) => {
 exports.createInspection = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
-    const { extinguisherData, vehicleData, ...inspectionData } = req.body;
+    const { extinguisherData, vehicleData, protectionData, ...inspectionData } = req.body;
 
     // 1. Create the base inspection entry
     const { inspectorId, ...otherInspectionData } = inspectionData;
@@ -120,9 +136,26 @@ exports.createInspection = async (req, res, next) => {
       transaction: t,
     });
 
-    // ... (Extinguisher logic omitted for brevity in previous context, but kept here for stability)
+    // 2. Process Extinguisher specifics if provided
     if (extinguisherData) {
-      // ... (logic for extinguisher)
+      const { details, ...mainExtData } = extinguisherData;
+      const extInsp = await ExtinguisherInspection.create(
+        {
+          ...mainExtData,
+          inspectionId: newInspection.id,
+        },
+        { transaction: t },
+      );
+
+      if (details && Array.isArray(details)) {
+        await ExtinguisherDetail.bulkCreate(
+          details.map((d) => ({
+            ...d,
+            extinguisherInspectionId: extInsp.id,
+          })),
+          { transaction: t },
+        );
+      }
     }
 
     // 3. Process Vehicle specifics if provided
@@ -150,6 +183,28 @@ exports.createInspection = async (req, res, next) => {
       }
     }
 
+    // 4. Process Protection specifics if provided
+    if (protectionData) {
+      const { details, ...mainProtData } = protectionData;
+      const protInsp = await ProtectionInspection.create(
+        {
+          ...mainProtData,
+          inspectionId: newInspection.id,
+        },
+        { transaction: t },
+      );
+
+      if (details && Array.isArray(details)) {
+        await ProtectionInspectionDetails.bulkCreate(
+          details.map((d) => ({
+            ...d,
+            protectionInspectionId: protInsp.id,
+          })),
+          { transaction: t },
+        );
+      }
+    }
+
     await t.commit();
     res.status(201).json(newInspection);
   } catch (error) {
@@ -165,7 +220,7 @@ exports.updateInspection = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const { extinguisherData, vehicleData, ...inspectionData } = req.body;
+    const { extinguisherData, vehicleData, protectionData, ...inspectionData } = req.body;
 
     const inspection = await Inspection.findByPk(id);
     if (!inspection) {
@@ -223,6 +278,25 @@ exports.updateInspection = async (req, res, next) => {
             quantity: 1,
             vehicleInspectionId: vehInsp.id,
           })),
+          { transaction: t },
+        );
+      }
+    }
+
+    // 4. Update Protection details if provided
+    if (protectionData) {
+      const { details, ...mainProtData } = protectionData;
+      let protInsp = await ProtectionInspection.findOne({ where: { inspectionId: id }, transaction: t });
+      if (protInsp) {
+        await protInsp.update(mainProtData, { transaction: t });
+        await ProtectionInspectionDetails.destroy({ where: { protection_inspection_id: protInsp.id }, transaction: t });
+      } else {
+        protInsp = await ProtectionInspection.create({ ...mainProtData, inspectionId: id }, { transaction: t });
+      }
+
+      if (details && Array.isArray(details)) {
+        await ProtectionInspectionDetails.bulkCreate(
+          details.map((d) => ({ ...d, protectionInspectionId: protInsp.id })),
           { transaction: t },
         );
       }

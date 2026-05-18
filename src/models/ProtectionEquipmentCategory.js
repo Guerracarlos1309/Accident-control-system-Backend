@@ -9,7 +9,7 @@ const ProtectionEquipmentCategory = sequelize.define('ProtectionEquipmentCategor
     unique: true
   },
   name: {
-    type: DataTypes.STRING(30),
+    type: DataTypes.STRING(100),
     allowNull: false
   },
   protectionTypeId: {

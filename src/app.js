@@ -58,24 +58,68 @@ app.get('/api/sync-database', async (req, res) => {
   try {
     const { sequelize } = require('./models');
     
-    // Intento quirúrgico: Añadir solo la columna status si no existe
-    await sequelize.query(`
-      DO $$ 
-      BEGIN 
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='facility' AND column_name='status') THEN
-          ALTER TABLE facility ADD COLUMN status INTEGER DEFAULT 1;
-        END IF;
-      END $$;
-    `);
+    // Sincronización completa: añade columnas faltantes y ajusta tipos de datos
+    // Usamos force:false y alter:true para no borrar datos existentes
+    await sequelize.sync({ alter: true });
+
+    // FORZAR COLUMNA DESCRIPTION (Por si acaso alter:true falló)
+    try {
+      await sequelize.query('ALTER TABLE "accident" ADD COLUMN IF NOT EXISTS "description" TEXT;');
+      await sequelize.query('ALTER TABLE "management" ADD COLUMN IF NOT EXISTS "description" TEXT;');
+    } catch (e) {
+      console.log("Las columnas description ya existen o hubo un error al crearlas.");
+    }
+
+    // Seed de datos iniciales para Centros Médicos (solo si no existen)
+    const { MedicalCenter, Parish } = require('./models');
+    const centersCount = await MedicalCenter.count();
+    
+    if (centersCount === 0) {
+      // Intentamos buscar una parroquia existente para vincular (opcional)
+      const parish = await Parish.findOne();
+      await MedicalCenter.bulkCreate([
+        { 
+          name: 'Hospital Dr. Rafael Calles Sierra', 
+          address: 'Av. Rafael González, Punto Fijo', 
+          parishId: parish ? parish.id : null 
+        },
+        { 
+          name: 'Clínica de la Familia', 
+          address: 'Calle Comercio, Caja de Agua', 
+          parishId: parish ? parish.id : null 
+        },
+        { 
+          name: 'Seguro Social (IVSS)', 
+          address: 'Sector Chimpire, Santa Ana d Coro', 
+          parishId: parish ? parish.id : null 
+        }
+      ]);
+    }
+
+    // REPARAR SECUENCIAS (Para evitar errores de ID duplicado)
+    const tables = ['management', 'accident', 'medical_center', 'employee', 'parish', 'city', 'state'];
+    for (const table of tables) {
+      try {
+        await sequelize.query(`
+          SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), coalesce(max(id), 0) + 1, false)
+          FROM "${table}";
+        `);
+      } catch (e) {
+        // Ignorar si la tabla o secuencia no existe
+      }
+    }
 
     res.status(200).json({ 
       status: 'SUCCESS', 
-      message: 'Base de datos actualizada quirúrgicamente. La columna "status" ha sido verificada/añadida.' 
+      message: 'Base de datos sincronizada y secuencias reparadas exitosamente.' 
     });
   } catch (error) {
+    console.error('ERROR EN SYNC:', error);
     res.status(500).json({ status: 'ERROR', message: error.message });
   }
 });
+
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {

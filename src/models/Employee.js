@@ -98,7 +98,17 @@ const Employee = sequelize.define('Employee', {
     }
   }, {
     tableName: 'employee',
-    underscored: true
+    underscored: true,
+    hooks: {
+      beforeSave: (instance) => {
+        for (const key in instance.dataValues) {
+          const value = instance.dataValues[key];
+          if (typeof value === 'string' && key !== 'imageUrl' && key !== 'email') {
+            instance.dataValues[key] = value.toUpperCase();
+          }
+        }
+      }
+    }
   });
 
 module.exports = Employee;

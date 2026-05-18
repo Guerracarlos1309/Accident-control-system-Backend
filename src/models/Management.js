@@ -12,8 +12,8 @@ const Management = sequelize.define('Management', {
     type: DataTypes.STRING(100),
     allowNull: false
   },
-  code: {
-    type: DataTypes.STRING(20),
+  description: {
+    type: DataTypes.TEXT,
     allowNull: true
   }
 }, {

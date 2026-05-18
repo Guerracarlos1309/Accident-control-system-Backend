@@ -21,6 +21,7 @@ const {
   InspectionStatus,
   ProtectionEquipmentCategory,
   Management,
+  MedicalCenter,
 } = require("../models");
 
 // Hierarchical fetch (Top level + children)
@@ -54,6 +55,13 @@ const createItem = (Model) => async (req, res, next) => {
     const newItem = await Model.create(req.body);
     res.status(201).json(newItem);
   } catch (error) {
+    console.error("DATABASE ERROR DETAILS:", {
+      message: error.message,
+      name: error.name,
+      parent: error.parent?.message,
+      detail: error.parent?.detail,
+      sql: error.sql
+    });
     next(error);
   }
 };
@@ -205,4 +213,29 @@ exports.getManagements = getList(Management);
 exports.createManagement = createItem(Management);
 exports.updateManagement = updateItem(Management);
 exports.deleteManagement = deleteItem(Management);
+
+// Medical Center Lookups
+exports.getMedicalCenters = async (req, res, next) => {
+  try {
+    const { Parish, City, State } = require("../models");
+    const data = await MedicalCenter.findAll({
+      include: [{ 
+        model: Parish, 
+        as: "parish",
+        include: [{ 
+          model: City, 
+          as: "city",
+          include: [{ model: State, as: "state" }]
+        }]
+      }],
+      order: [["name", "ASC"]],
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+exports.createMedicalCenter = createItem(MedicalCenter);
+exports.updateMedicalCenter = updateItem(MedicalCenter);
+exports.deleteMedicalCenter = deleteItem(MedicalCenter);
 

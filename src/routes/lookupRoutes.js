@@ -115,5 +115,11 @@ router.post('/managements', lookupController.createManagement);
 router.put('/managements/:id', lookupController.updateManagement);
 router.delete('/managements/:id', lookupController.deleteManagement);
 
+// --- Medical Center Lookups ---
+router.get('/medical-centers', lookupController.getMedicalCenters);
+router.post('/medical-centers', lookupController.createMedicalCenter);
+router.put('/medical-centers/:id', lookupController.updateMedicalCenter);
+router.delete('/medical-centers/:id', lookupController.deleteMedicalCenter);
+
 module.exports = router;
 

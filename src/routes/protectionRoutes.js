@@ -8,6 +8,7 @@ router.use(protect);
 
 // Equipment
 router.get('/equipment', protectionController.getEquipment);
+router.post('/equipment', protectionController.createEquipment);
 router.put('/equipment/:id', protectionController.updateEquipment);
 router.delete('/equipment/:id', protectionController.deleteEquipment);
 

@@ -32,6 +32,18 @@ exports.getEquipment = async (req, res, next) => {
   }
 };
 
+exports.createEquipment = async (req, res, next) => {
+  try {
+    const equip = await ProtectionEquipment.create(req.body);
+    const withCategory = await ProtectionEquipment.findByPk(equip.id, {
+      include: [{ model: ProtectionEquipmentCategory, as: 'category' }]
+    });
+    res.status(201).json(withCategory);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.updateEquipment = async (req, res, next) => {
   try {
     const equip = await ProtectionEquipment.findByPk(req.params.id);
