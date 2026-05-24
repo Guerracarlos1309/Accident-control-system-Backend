@@ -8,5 +8,6 @@ router.get("/accidents", reportController.downloadAccidentsListReport);
 router.get("/accidents/:id", reportController.downloadAccidentReport);
 router.get("/inspections", reportController.downloadInspectionsListReport);
 router.get("/inspections/:id", reportController.downloadInspectionReport);
+router.get("/custom", reportController.downloadCustomReport);
 
 module.exports = router;

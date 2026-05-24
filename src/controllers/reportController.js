@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const {
   Employee,
   JobTitle,
@@ -288,6 +289,149 @@ exports.downloadInspectionsListReport = async (req, res, next) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error("Error generating inspections list PDF:", error);
+    next(error);
+  }
+};
+
+/**
+ * Generate a custom, dynamically filtered report PDF (by dates, management, facility, types, status)
+ * Or returns JSON preview of filtered records if preview=true
+ */
+exports.downloadCustomReport = async (req, res, next) => {
+  try {
+    const { 
+      reportType, 
+      startDate, 
+      endDate, 
+      managementId, 
+      facilityId, 
+      accidentTypeId, 
+      processStatusId, 
+      inspectionType, 
+      statusId,
+      preview,
+      ids
+    } = req.query;
+
+    if (!reportType) {
+      return res.status(400).json({ message: "El parámetro reportType es requerido (accidents o inspections)" });
+    }
+
+    // Build base date filter if provided
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter[Op.between] = [startDate, endDate];
+    } else if (startDate) {
+      dateFilter[Op.gte] = startDate;
+    } else if (endDate) {
+      dateFilter[Op.lte] = endDate;
+    }
+
+    if (reportType === "accidents") {
+      const whereClause = {};
+      if (ids) {
+        whereClause.id = { [Op.in]: ids.split(",").map(Number) };
+      } else {
+        if (startDate || endDate) {
+          whereClause.accidentDate = dateFilter;
+        }
+        if (managementId) {
+          whereClause.managementId = managementId;
+        }
+        if (accidentTypeId) {
+          whereClause.accidentTypeId = accidentTypeId;
+        }
+        if (processStatusId) {
+          whereClause.processStatusId = processStatusId;
+        }
+      }
+
+      const accidents = await Accident.findAll({
+        where: whereClause,
+        include: [
+          { 
+            model: Facility, 
+            as: "facility",
+            include: ["location", "installationType"]
+          },
+          { model: AccidentType, as: "type" },
+          { model: Period, as: "period" },
+          { model: InspectionStatus, as: "processStatus" },
+          { model: Management, as: "management" }
+        ],
+        order: [["accidentDate", "DESC"], ["id", "DESC"]],
+      });
+
+      if (preview === "true") {
+        return res.json(accidents);
+      }
+
+      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_accidentes.pdf");
+      return res.send(pdfBuffer);
+    } 
+    
+    if (reportType === "inspections") {
+      const whereClause = {};
+      if (ids) {
+        whereClause.id = { [Op.in]: ids.split(",").map(Number) };
+      } else {
+        if (startDate || endDate) {
+          whereClause.date = dateFilter;
+        }
+        if (facilityId) {
+          whereClause.facilityId = facilityId;
+        }
+        if (statusId) {
+          whereClause.statusId = statusId;
+        }
+      }
+
+      // Build dynamic associations based on inspectionType filter
+      const includeArray = [
+        { 
+          model: Facility, 
+          as: "facility",
+          include: [{ model: Location, as: "location" }]
+        },
+        { model: Employee, as: "inspector" },
+        { model: InspectionStatus, as: "status" },
+      ];
+
+      const extinguisherInclude = { model: ExtinguisherInspection, as: "extinguisherInspection", required: false };
+      const vehicleInclude = { model: VehicleInspection, as: "vehicleInspection", required: false };
+      const protectionInclude = { model: ProtectionInspection, as: "protectionInspection", required: false };
+
+      if (inspectionType === "extinguishers") {
+        extinguisherInclude.required = true;
+      } else if (inspectionType === "vehicles") {
+        vehicleInclude.required = true;
+      } else if (inspectionType === "protection") {
+        protectionInclude.required = true;
+      }
+
+      includeArray.push(extinguisherInclude, vehicleInclude, protectionInclude);
+
+      const inspections = await Inspection.findAll({
+        where: whereClause,
+        include: includeArray,
+        order: [["date", "DESC"], ["created_at", "DESC"]],
+      });
+
+      if (preview === "true") {
+        return res.json(inspections);
+      }
+
+      const pdfBuffer = await PdfGenerator.generateInspectionsListPdf(inspections);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_inspecciones.pdf");
+      return res.send(pdfBuffer);
+    }
+
+    return res.status(400).json({ message: "Tipo de reporte no soportado" });
+  } catch (error) {
+    console.error("Error generating custom report PDF:", error);
     next(error);
   }
 };

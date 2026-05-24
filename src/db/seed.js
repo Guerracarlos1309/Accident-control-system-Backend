@@ -23,7 +23,8 @@ async function seed() {
 
     await Role.bulkCreate([
       { id: 1, name: 'Administrador', description: 'Acceso total' },
-      { id: 2, name: 'Inspector', description: 'Realiza inspecciones' }
+      { id: 2, name: 'Inspector', description: 'Realiza inspecciones' },
+      { id: 3, name: 'Analista', description: 'Visualiza datos y reportes' }
     ]);
 
     await Period.bulkCreate([
@@ -179,7 +180,8 @@ async function seed() {
 
     await User.bulkCreate([
       { id: 1, username: 'admin', password: 'admin123', roleId: 1, firstName: 'Sistema', lastName: 'Admin' },
-      { id: 2, username: 'inspector1', password: 'password123', roleId: 2, firstName: 'Carlos', lastName: 'Guerra' }
+      { id: 2, username: 'inspector1', password: 'password123', roleId: 2, firstName: 'Carlos', lastName: 'Guerra' },
+      { id: 3, username: 'analista1', password: 'password123', roleId: 3, firstName: 'Ana', lastName: 'Lista' }
     ], { individualHooks: true });
 
     await Employee.bulkCreate([

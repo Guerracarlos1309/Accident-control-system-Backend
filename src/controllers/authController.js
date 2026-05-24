@@ -17,7 +17,7 @@ exports.login = async (req, res, next) => {
 
     // Find user by username
     const user = await User.findOne({
-      where: { username },
+      where: { username: username.toUpperCase() },
       include: [{ model: Role, as: "role" }],
     });
 
