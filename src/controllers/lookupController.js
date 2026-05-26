@@ -11,7 +11,6 @@ const {
   InstallationType,
   ProtectionType,
   Occupation,
-
   JobTitle,
   Brand,
   Model,
@@ -60,7 +59,7 @@ const createItem = (Model) => async (req, res, next) => {
       name: error.name,
       parent: error.parent?.message,
       detail: error.parent?.detail,
-      sql: error.sql
+      sql: error.sql,
     });
     next(error);
   }
@@ -142,8 +141,6 @@ exports.createOccupation = createItem(Occupation);
 exports.updateOccupation = updateItem(Occupation);
 exports.deleteOccupation = deleteItem(Occupation);
 
-
-
 exports.getJobTitles = getList(JobTitle);
 exports.createJobTitle = createItem(JobTitle);
 exports.updateJobTitle = updateItem(JobTitle);
@@ -204,9 +201,15 @@ exports.updateProtectionType = updateItem(ProtectionType);
 exports.deleteProtectionType = deleteItem(ProtectionType);
 
 exports.getProtectionEquipmentCategories = getList(ProtectionEquipmentCategory);
-exports.createProtectionEquipmentCategory = createItem(ProtectionEquipmentCategory);
-exports.updateProtectionEquipmentCategory = updateItem(ProtectionEquipmentCategory);
-exports.deleteProtectionEquipmentCategory = deleteItem(ProtectionEquipmentCategory);
+exports.createProtectionEquipmentCategory = createItem(
+  ProtectionEquipmentCategory,
+);
+exports.updateProtectionEquipmentCategory = updateItem(
+  ProtectionEquipmentCategory,
+);
+exports.deleteProtectionEquipmentCategory = deleteItem(
+  ProtectionEquipmentCategory,
+);
 
 // Organizational Lookups
 exports.getManagements = getList(Management);
@@ -219,15 +222,19 @@ exports.getMedicalCenters = async (req, res, next) => {
   try {
     const { Parish, City, State } = require("../models");
     const data = await MedicalCenter.findAll({
-      include: [{ 
-        model: Parish, 
-        as: "parish",
-        include: [{ 
-          model: City, 
-          as: "city",
-          include: [{ model: State, as: "state" }]
-        }]
-      }],
+      include: [
+        {
+          model: Parish,
+          as: "parish",
+          include: [
+            {
+              model: City,
+              as: "city",
+              include: [{ model: State, as: "state" }],
+            },
+          ],
+        },
+      ],
       order: [["name", "ASC"]],
     });
     res.status(200).json(data);
@@ -238,4 +245,3 @@ exports.getMedicalCenters = async (req, res, next) => {
 exports.createMedicalCenter = createItem(MedicalCenter);
 exports.updateMedicalCenter = updateItem(MedicalCenter);
 exports.deleteMedicalCenter = deleteItem(MedicalCenter);
-
