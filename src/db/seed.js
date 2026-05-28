@@ -1,6 +1,6 @@
 const { 
   sequelize, 
-  Role, User, Occupation, Department, JobTitle, Employee,
+  Role, User, Occupation, JobTitle, Employee,
   State, City, Parish, Location,
   Accident, AccidentType, Magnitude, Period, FileDocument, AccidentDocumentCheck, 
   AccidentAffectationDetail, AffectationSubject, Affectation, ContactType, DamageAgent, 
@@ -91,11 +91,6 @@ async function seed() {
     // --- FASE 2: MAESTROS DE RRHH, GEOGRAFÍA Y VEHÍCULOS (Nivel 1) ---
     console.log('⏳ Fase 2: Cargando RRHH, Geografía y Vehículos...');
 
-    await Department.bulkCreate([
-      { id: 1, name: 'Seguridad y Salud Laboral' },
-      { id: 2, name: 'Mantenimiento y Logística' }
-    ]);
-
     await JobTitle.bulkCreate([
       { id: 1, name: 'Gerente' },
       { id: 2, name: 'Técnico Especialista' },
@@ -185,8 +180,8 @@ async function seed() {
     ], { individualHooks: true });
 
     await Employee.bulkCreate([
-      { personalNumber: 'EMP001', idCard: 'V-11', firstName: 'Juan', lastName: 'Pérez', departmentId: 1, jobTitleId: 1, occupationId: 1 },
-      { personalNumber: 'EMP002', idCard: 'V-22', firstName: 'Ana', lastName: 'Rodríguez', departmentId: 2, jobTitleId: 2, occupationId: 2 }
+      { personalNumber: 'EMP001', idCard: 'V-11', firstName: 'Juan', lastName: 'Pérez', managementId: 1, jobTitleId: 1, occupationId: 1 },
+      { personalNumber: 'EMP002', idCard: 'V-22', firstName: 'Ana', lastName: 'Rodríguez', managementId: 2, jobTitleId: 2, occupationId: 2 }
     ]);
 
     await Vehicle.create({ plate: 'ABC-123', modelId: vModel.id, vehicleTypeId: vt.id, color: 'Blanco', year: 2022 });
