@@ -48,6 +48,11 @@ const Accident = sequelize.define('Accident', {
     type: DataTypes.INTEGER,
     field: 'period_id'
   },
+  magnitudeId: {
+    type: DataTypes.INTEGER,
+    field: 'magnitude_id',
+    allowNull: true
+  },
   userId: {
     type: DataTypes.INTEGER,
     field: 'user_id'

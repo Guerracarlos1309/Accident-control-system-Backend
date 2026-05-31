@@ -113,6 +113,8 @@ Accident.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
 Facility.hasMany(Accident, { foreignKey: 'facility_id', as: 'accidents' });
 Accident.belongsTo(AccidentType, { foreignKey: 'accident_type_id', as: 'type' });
 Accident.belongsTo(Period, { foreignKey: 'period_id', as: 'period' });
+Accident.belongsTo(Magnitude, { foreignKey: 'magnitude_id', as: 'magnitude' });
+Magnitude.hasMany(Accident, { foreignKey: 'magnitude_id', as: 'accidents' });
 Accident.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 Accident.belongsTo(DamageAgent, { foreignKey: 'damage_agent_id', as: 'damageAgent' });
 Accident.belongsTo(ContactType, { foreignKey: 'contact_type_id', as: 'contactType' });
