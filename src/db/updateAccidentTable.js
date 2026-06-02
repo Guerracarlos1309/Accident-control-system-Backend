@@ -1,9 +1,11 @@
-const sequelize = require('../config/database');
+const sequelize = require("../config/database");
 
 async function update() {
   try {
-    console.log('--- 🛠️ Actualizando estructura de tabla Accident (Modo Seguro) ---');
-    
+    console.log(
+      "--- 🛠️ Actualizando estructura de tabla Accident (Modo Seguro) ---",
+    );
+
     // Añadimos la columna management_id si no existe
     // También nos aseguramos de que la tabla 'management' exista primero por si acaso
     await sequelize.query(`
@@ -22,10 +24,15 @@ async function update() {
       ON UPDATE CASCADE;
     `);
 
-    console.log('✅ Estructura actualizada exitosamente sin pérdida de datos.');
+    // Añadimos la columna accident_code si no existe
+    await sequelize.query(`
+      ALTER TABLE "accident" ADD COLUMN IF NOT EXISTS "accident_code" VARCHAR(50);
+    `);
+
+    console.log("✅ Estructura actualizada exitosamente sin pérdida de datos.");
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error al actualizar la estructura:', error);
+    console.error("❌ Error al actualizar la estructura:", error);
     process.exit(1);
   }
 }
