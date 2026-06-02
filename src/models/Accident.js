@@ -106,6 +106,30 @@ const Accident = sequelize.define('Accident', {
   activity: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  workType: {
+    type: DataTypes.STRING(50),
+    field: 'work_type'
+  },
+  hazardCode: {
+    type: DataTypes.STRING(50),
+    field: 'hazard_code'
+  },
+  contactExposureCode: {
+    type: DataTypes.STRING(50),
+    field: 'contact_exposure_code'
+  },
+  affectationClassCode: {
+    type: DataTypes.STRING(50),
+    field: 'affectation_class_code'
+  },
+  affectationSubjectCode: {
+    type: DataTypes.STRING(50),
+    field: 'affectation_subject_code'
+  },
+  assetsProcessAffectation: {
+    type: DataTypes.STRING(50),
+    field: 'assets_process_affectation'
   }
 }, {
   tableName: 'accident',

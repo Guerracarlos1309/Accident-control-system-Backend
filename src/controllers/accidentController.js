@@ -178,7 +178,13 @@ exports.createAccident = async (req, res, next) => {
       globalObservations: rawAccidentData.globalObservations,
 
       parishId: rawAccidentData.parishId ? parseInt(rawAccidentData.parishId) : null,
-      activity: rawAccidentData.activity
+      activity: rawAccidentData.activity,
+      workType: rawAccidentData.workType || null,
+      hazardCode: rawAccidentData.hazardCode || null,
+      contactExposureCode: rawAccidentData.contactExposureCode || null,
+      affectationClassCode: rawAccidentData.affectationClassCode || null,
+      affectationSubjectCode: rawAccidentData.affectationSubjectCode || null,
+      assetsProcessAffectation: rawAccidentData.assetsProcessAffectation || null
     };
 
     // Asignar el ID del usuario que crea el reporte
@@ -213,7 +219,11 @@ exports.createAccident = async (req, res, next) => {
         employeePersonalNumber: emp.employeeId || emp.employeePersonalNumber,
         injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
         magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
-        restDays: emp.restDays ? parseInt(emp.restDays) : null,
+        restDays: emp.restDays !== null ? parseInt(emp.restDays) : null,
+        affectedArea: emp.affectedArea || null,
+        injuryNature: emp.injuryNature || null,
+        injuryLevel: emp.injuryLevel || null,
+        injuryConsequence: emp.injuryConsequence || null,
         accidentId: newAccident.id,
       }));
       await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
@@ -304,7 +314,13 @@ exports.updateAccident = async (req, res, next) => {
       globalObservations: rawAccidentData.globalObservations,
 
       parishId: rawAccidentData.parishId ? parseInt(rawAccidentData.parishId) : null,
-      activity: rawAccidentData.activity
+      activity: rawAccidentData.activity,
+      workType: rawAccidentData.workType || null,
+      hazardCode: rawAccidentData.hazardCode || null,
+      contactExposureCode: rawAccidentData.contactExposureCode || null,
+      affectationClassCode: rawAccidentData.affectationClassCode || null,
+      affectationSubjectCode: rawAccidentData.affectationSubjectCode || null,
+      assetsProcessAffectation: rawAccidentData.assetsProcessAffectation || null
     };
 
     const accident = await Accident.findByPk(id);
@@ -324,7 +340,11 @@ exports.updateAccident = async (req, res, next) => {
           employeePersonalNumber: emp.employeeId || emp.employeePersonalNumber,
           injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
           magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
-          restDays: emp.restDays ? parseInt(emp.restDays) : null,
+          restDays: emp.restDays !== null ? parseInt(emp.restDays) : null,
+          affectedArea: emp.affectedArea || null,
+          injuryNature: emp.injuryNature || null,
+          injuryLevel: emp.injuryLevel || null,
+          injuryConsequence: emp.injuryConsequence || null,
           accidentId: id,
         }));
         await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });

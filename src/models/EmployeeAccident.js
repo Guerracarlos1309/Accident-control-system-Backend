@@ -27,6 +27,22 @@ const EmployeeAccident = sequelize.define('EmployeeAccident', {
   magnitudeId: {
     type: DataTypes.INTEGER,
     field: 'magnitude_id'
+  },
+  affectedArea: {
+    type: DataTypes.STRING(50),
+    field: 'affected_area'
+  },
+  injuryNature: {
+    type: DataTypes.STRING(50),
+    field: 'injury_nature'
+  },
+  injuryLevel: {
+    type: DataTypes.STRING(50),
+    field: 'injury_level'
+  },
+  injuryConsequence: {
+    type: DataTypes.STRING(50),
+    field: 'injury_consequence'
   }
 }, {
   tableName: 'employee_accident',
