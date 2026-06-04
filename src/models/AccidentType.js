@@ -10,7 +10,7 @@ const AccidentType = sequelize.define('AccidentType', {
   },
   code: {
     type: DataTypes.STRING(50),
-    allowNull: false
+    allowNull: true // Opcional: solo aplica a registros sembrados por norma técnica
   },
   name: {
     type: DataTypes.STRING(100),

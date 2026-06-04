@@ -21,6 +21,7 @@ const {
   AccidentWitness,
   Occupation,
   Management,
+  MedicalCenter,
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
@@ -80,6 +81,23 @@ exports.getAccidentById = async (req, res, next) => {
         { model: ContactType, as: "contactType" },
         { model: Management, as: "management" },
         { model: InspectionStatus, as: "processStatus" },
+        {
+          model: MedicalCenter,
+          as: "medicalCenter",
+          include: [
+            {
+              model: require("../models").Parish,
+              as: "parish",
+              include: [
+                {
+                  model: require("../models").City,
+                  as: "city",
+                  include: [{ model: require("../models").State, as: "state" }],
+                },
+              ],
+            },
+          ],
+        },
         {
           model: EmployeeAccident,
           as: "involvedEmployees",
@@ -199,6 +217,14 @@ exports.createAccident = async (req, res, next) => {
         ? parseInt(rawAccidentData.parishId)
         : null,
       activity: rawAccidentData.activity,
+      accidentControlNumber: rawAccidentData.accidentControlNumber || rawAccidentData.accident_control_number,
+      // Campos de causa (tab Causa)
+      workType: rawAccidentData.workType || null,
+      hazardCode: rawAccidentData.hazardCode || null,
+      contactExposureCode: rawAccidentData.contactExposureCode || null,
+      affectationClassCode: rawAccidentData.affectationClassCode || null,
+      affectationSubjectCode: rawAccidentData.affectationSubjectCode || null,
+      assetsProcessAffectation: rawAccidentData.assetsProcessAffectation || null,
     };
 
     // Asignar el ID del usuario que crea el reporte
@@ -234,6 +260,10 @@ exports.createAccident = async (req, res, next) => {
         injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
         magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
         restDays: emp.restDays ? parseInt(emp.restDays) : null,
+        affectedArea: emp.affectedArea || null,
+        injuryNature: emp.injuryNature || null,
+        injuryLevel: emp.injuryLevel || null,
+        injuryConsequence: emp.injuryConsequence || null,
         accidentId: newAccident.id,
       }));
       await EmployeeAccident.bulkCreate(employeesToCreate, { transaction: t });
@@ -354,6 +384,14 @@ exports.updateAccident = async (req, res, next) => {
         ? parseInt(rawAccidentData.parishId)
         : null,
       activity: rawAccidentData.activity,
+      accidentControlNumber: rawAccidentData.accidentControlNumber || rawAccidentData.accident_control_number,
+      // Campos de causa (tab Causa)
+      workType: rawAccidentData.workType || null,
+      hazardCode: rawAccidentData.hazardCode || null,
+      contactExposureCode: rawAccidentData.contactExposureCode || null,
+      affectationClassCode: rawAccidentData.affectationClassCode || null,
+      affectationSubjectCode: rawAccidentData.affectationSubjectCode || null,
+      assetsProcessAffectation: rawAccidentData.assetsProcessAffectation || null,
     };
 
     const accident = await Accident.findByPk(id);
@@ -377,6 +415,10 @@ exports.updateAccident = async (req, res, next) => {
           injuryTypeId: emp.injuryTypeId ? parseInt(emp.injuryTypeId) : null,
           magnitudeId: emp.magnitudeId ? parseInt(emp.magnitudeId) : null,
           restDays: emp.restDays ? parseInt(emp.restDays) : null,
+          affectedArea: emp.affectedArea || null,
+          injuryNature: emp.injuryNature || null,
+          injuryLevel: emp.injuryLevel || null,
+          injuryConsequence: emp.injuryConsequence || null,
           accidentId: id,
         }));
         await EmployeeAccident.bulkCreate(employeesToCreate, {

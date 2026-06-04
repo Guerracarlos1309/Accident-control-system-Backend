@@ -53,4 +53,9 @@ db.serialize(() => {
     if (err) console.log("injury_consequence column might already exist.");
     else console.log("Added injury_consequence to employee_accident.");
   });
+
+  db.run(`ALTER TABLE accident ADD COLUMN accident_control_number VARCHAR(50)`, (err) => {
+    if (err) console.log("accident_control_number column might already exist.");
+    else console.log("Added accident_control_number to accident.");
+  });
 });

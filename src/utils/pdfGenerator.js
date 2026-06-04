@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const path = require('path');
 
 class PdfGenerator {
   /**
@@ -12,23 +13,30 @@ class PdfGenerator {
     // Return fill color to black
     doc.fillColor('#333333');
 
-    // Header Content
-    doc.font('Helvetica-Bold').fontSize(14).fillColor('#005C9E').text('CORPOELEC', 50, 40);
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#666666').text('CORPORACIÓN ELÉCTRICA NACIONAL', 50, 55);
-    doc.font('Helvetica').fontSize(8).text('GERENCIA DE AMBIENTE, SEGURIDAD E HIGIENE OCUPACIONAL (ASHO)', 50, 67);
+    // Header Logo & Content
+    try {
+      const logoPath = path.join(__dirname, '..', 'assets', 'logoCorpoelec.png');
+      doc.image(logoPath, 50, 32, { width: 90 });
+    } catch (e) {
+      console.error("Logo image not found or failed to load in PDF header:", e);
+    }
+
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#005C9E').text('CORPOELEC', 155, 36);
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#666666').text('CORPORACIÓN ELÉCTRICA NACIONAL', 155, 50);
+    doc.font('Helvetica').fontSize(7.5).text('GERENCIA DE AMBIENTE, SEGURIDAD E HIGIENE OCUPACIONAL (ASHO)', 155, 61);
 
     // Document Title
-    doc.font('Helvetica-Bold').fontSize(12).fillColor('#E30613').text(title.toUpperCase(), 50, 90, { align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#E30613').text(title.toUpperCase(), 50, 84, { align: 'right' });
     
     // Thin separator line
-    doc.moveTo(50, 110).lineTo(doc.page.width - 50, 110).lineWidth(1).strokeColor('#E0E0E0').stroke();
+    doc.moveTo(50, 102).lineTo(doc.page.width - 50, 102).lineWidth(1).strokeColor('#E0E0E0').stroke();
     
     // Reset positions
-    doc.y = 130;
+    doc.y = 115;
   }
 
   /**
-   * Helper to draw a sleek footer
+   * Helper to draw a sleek footer on all pages
    */
   static drawFooter(doc) {
     const pageCount = doc.bufferedPageRange().count;
@@ -36,29 +44,43 @@ class PdfGenerator {
       doc.switchToPage(i);
       
       // Footer line
-      doc.moveTo(50, doc.page.height - 50).lineTo(doc.page.width - 50, doc.page.height - 50).lineWidth(1).strokeColor('#E0E0E0').stroke();
+      doc.moveTo(50, doc.page.height - 45).lineTo(doc.page.width - 50, doc.page.height - 45).lineWidth(0.5).strokeColor('#DCDCDC').stroke();
       
       // Footer text
-      doc.font('Helvetica').fontSize(7).fillColor('#999999');
-      doc.text('Documento generado automáticamente por el Sistema de Control de Accidentes y Gestión ASHO.', 50, doc.page.height - 40);
-      doc.text(`Página ${i + 1} de ${pageCount}`, doc.page.width - 150, doc.page.height - 40, { align: 'right' });
+      doc.font('Helvetica').fontSize(6.5).fillColor('#888888');
+      doc.text('Documento generado automáticamente por el Sistema de Control de Accidentes y Gestión ASHO.', 50, doc.page.height - 36);
+      doc.text(`Página ${i + 1} de ${pageCount}`, doc.page.width - 150, doc.page.height - 36, { align: 'right' });
     }
   }
 
   /**
-   * Helper to draw a beautiful structured grid panel / table
+   * Helper to draw a clean, modern section title (colored bar prefix)
    */
-  static drawPanel(doc, title, yPosition, height) {
-    doc.rect(50, yPosition, doc.page.width - 100, height)
-       .lineWidth(1)
-       .strokeColor('#E0E0E0')
-       .stroke();
-       
-    // Header band of the panel
-    doc.rect(50, yPosition, doc.page.width - 100, 20)
-       .fill('#F5F5F5');
-       
-    doc.font('Helvetica-Bold').fontSize(9).fillColor('#005C9E').text(title.toUpperCase(), 60, yPosition + 6);
+  static drawSectionHeader(doc, title) {
+    // Add vertical space before unless we are at page top
+    if (doc.y > 120) {
+      doc.y += 15;
+    }
+    
+    // Check if section header fits on page, otherwise break page
+    if (doc.y > doc.page.height - 80) {
+      doc.addPage();
+      this.drawHeader(doc, doc.currentTitle || 'Reporte');
+    }
+
+    const currentY = doc.y;
+    doc.rect(50, currentY, 3, 13).fill('#005C9E');
+    doc.fillColor('#333333');
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#005C9E').text(title.toUpperCase(), 58, currentY + 1.5);
+    doc.y = currentY + 18;
+  }
+
+  /**
+   * Helper to draw standard key-value info rows
+   */
+  static drawDataRow(doc, label, value, x, y, colWidth = 240) {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555').text(label, x, y, { width: 100 });
+    doc.font('Helvetica').fontSize(8).fillColor('#111111').text(value || '-', x + 105, y, { width: colWidth - 105 });
   }
 
   /**
@@ -73,65 +95,69 @@ class PdfGenerator {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      this.drawHeader(doc, 'Reporte de Nómina de Personal (Roster)');
+      const title = 'Reporte de Nómina de Personal';
+      doc.currentTitle = title;
+      this.drawHeader(doc, title);
 
-      // Summary Stats Block
-      doc.rect(50, doc.y, doc.page.width - 100, 45).lineWidth(1).strokeColor('#005C9E').stroke();
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#005C9E').text('RESUMEN DE REGISTRO', 60, doc.y + 8);
-      doc.font('Helvetica').fontSize(9).fillColor('#333333').text(`Total Personal Activo: ${employees.length} trabajadores`, 60, doc.y + 24);
-      doc.font('Helvetica').fontSize(9).text(`Fecha de Generación: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 250, doc.y + 24, { align: 'right' });
+      // Summary block
+      const summaryY = doc.y;
+      doc.rect(50, summaryY, doc.page.width - 100, 32).fill('#F7F9FB');
+      doc.rect(50, summaryY, doc.page.width - 100, 32).lineWidth(0.5).strokeColor('#CDD6DC').stroke();
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E').text('RESUMEN DE NÓMINA GENERAL', 65, summaryY + 12);
+      doc.font('Helvetica').fontSize(8).fillColor('#333333').text(`Total Personal Activo: ${employees.length} trabajadores`, 225, summaryY + 12);
+      doc.font('Helvetica').fontSize(8).text(`Fecha de Generación: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, summaryY + 12, { align: 'right', width: 140 });
       
-      doc.y += 65;
+      doc.y = summaryY + 45;
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 20).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-      doc.text('N° PERS.', 55, startY + 6);
-      doc.text('CÉDULA', 110, startY + 6);
-      doc.text('APELLIDOS Y NOMBRES', 180, startY + 6);
-      doc.text('GERENCIA', 340, startY + 6);
-      doc.text('CARGO / OCUPACIÓN', 450, startY + 6);
+      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+      doc.text('FICHA / PERS.', 55, startY + 5);
+      doc.text('CÉDULA', 115, startY + 5);
+      doc.text('APELLIDOS Y NOMBRES', 185, startY + 5);
+      doc.text('GERENCIA', 345, startY + 5);
+      doc.text('CARGO / OCUPACIÓN', 460, startY + 5);
 
-      doc.y = startY + 20;
+      doc.y = startY + 18;
 
-      // Table Rows
       let isEven = false;
       employees.forEach((emp) => {
-        // Page break if near bottom
-        if (doc.y > doc.page.height - 80) {
+        if (doc.y > doc.page.height - 65) {
           doc.addPage();
-          this.drawHeader(doc, 'Reporte de Nómina de Personal (Roster)');
+          this.drawHeader(doc, title);
           
-          // Re-draw headers
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 20).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-          doc.text('N° PERS.', 55, pageStartY + 6);
-          doc.text('CÉDULA', 110, pageStartY + 6);
-          doc.text('APELLIDOS Y NOMBRES', 180, pageStartY + 6);
-          doc.text('GERENCIA', 340, pageStartY + 6);
-          doc.text('CARGO / OCUPACIÓN', 450, pageStartY + 6);
-          doc.y = pageStartY + 20;
+          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+          doc.text('FICHA / PERS.', 55, pageStartY + 5);
+          doc.text('CÉDULA', 115, pageStartY + 5);
+          doc.text('APELLIDOS Y NOMBRES', 185, pageStartY + 5);
+          doc.text('GERENCIA', 345, pageStartY + 5);
+          doc.text('CARGO / OCUPACIÓN', 460, pageStartY + 5);
+          doc.y = pageStartY + 18;
         }
 
-        const rowHeight = 22;
+        const rowHeight = 18;
+        const rowY = doc.y;
         if (isEven) {
-          doc.rect(50, doc.y, doc.page.width - 100, rowHeight).fill('#F9F9F9');
+          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
         }
         
-        doc.font('Helvetica').fontSize(8).fillColor('#333333');
-        doc.text(emp.personalNumber || '-', 55, doc.y + 7);
-        doc.text(emp.idCard || '-', 110, doc.y + 7);
+        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#EAEAEA');
+
+        doc.font('Helvetica').fontSize(7.5).fillColor('#222222');
+        doc.text(emp.personalNumber || '-', 55, rowY + 5);
+        doc.text(emp.idCard || '-', 115, rowY + 5);
         
         const fullName = `${emp.lastName || ''}, ${emp.firstName || ''}`.trim();
-        doc.text(fullName.substring(0, 30), 180, doc.y + 7);
+        doc.text(fullName.substring(0, 30), 185, rowY + 5);
         
         const mgt = emp.management ? emp.management.name : '-';
-        doc.text(mgt.substring(0, 22), 340, doc.y + 7);
+        doc.text(mgt.substring(0, 22), 345, rowY + 5);
         
         const job = emp.jobTitle ? emp.jobTitle.name : (emp.occupation ? emp.occupation.name : '-');
-        doc.text(job.substring(0, 22), 450, doc.y + 7);
+        doc.text(job.substring(0, 22), 460, rowY + 5);
 
         doc.y += rowHeight;
         isEven = !isEven;
@@ -154,155 +180,150 @@ class PdfGenerator {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      this.drawHeader(doc, `Reporte Detallado de Accidente (N° ${accident.inpsaselFileNumber || accident.id})`);
+      const title = `Expediente ASHO de Incidente (N° ${accident.inpsaselFileNumber || accident.id})`;
+      doc.currentTitle = title;
+      this.drawHeader(doc, title);
 
-      // PANEL 1: GENERAL INFORMATION
-      const p1Y = doc.y;
-      this.drawPanel(doc, 'Información General del Incidente', p1Y, 100);
+      // Section 1: General Information (Clean Grid)
+      this.drawSectionHeader(doc, 'Información del Suceso');
+      const startY = doc.y;
       
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-      doc.text('Código Reporte:', 60, p1Y + 30);
-      doc.font('Helvetica').text(accident.inpsaselFileNumber || `N/A (ID: ${accident.id})`, 140, p1Y + 30);
-
-      doc.font('Helvetica-Bold').text('Fecha / Hora:', 60, p1Y + 45);
       const dateFormatted = accident.accidentDate ? new Date(accident.accidentDate).toLocaleDateString('es-ES') : '-';
-      doc.font('Helvetica').text(`${dateFormatted} ${accident.accidentTime || ''}`, 140, p1Y + 45);
-
-      doc.font('Helvetica-Bold').text('Gerencia Responsable:', 60, p1Y + 60);
-      doc.font('Helvetica').text(accident.management ? accident.management.name : '-', 170, p1Y + 60);
-
-      doc.font('Helvetica-Bold').text('Instalación:', 60, p1Y + 75);
       const facilityStr = accident.facility ? `${accident.facility.name} (${accident.facility.location ? accident.facility.location.name : ''})` : '-';
-      doc.font('Helvetica').text(facilityStr, 140, p1Y + 75);
-
-      // Column 2 inside panel 1
-      doc.font('Helvetica-Bold').text('Tipo de Incidente:', 320, p1Y + 30);
-      doc.font('Helvetica').text(accident.type ? accident.type.name : '-', 410, p1Y + 30);
-
-      doc.font('Helvetica-Bold').text('Agente de Daño:', 320, p1Y + 45);
-      doc.font('Helvetica').text(accident.damageAgent ? accident.damageAgent.name : '-', 400, p1Y + 45);
-
-      doc.font('Helvetica-Bold').text('Tipo de Contacto:', 320, p1Y + 60);
-      doc.font('Helvetica').text(accident.contactType ? accident.contactType.name : '-', 400, p1Y + 60);
-
-      doc.font('Helvetica-Bold').text('Estatus Proceso:', 320, p1Y + 75);
-      doc.font('Helvetica').fillColor('#E30613').text(accident.processStatus ? accident.processStatus.name : '-', 400, p1Y + 75);
-
-      // PANEL 2: DESCRIPTION OF EVENT
-      doc.y = p1Y + 115;
-      const p2Y = doc.y;
-      this.drawPanel(doc, 'Descripción Detallada del Evento', p2Y, 80);
-      doc.font('Helvetica').fontSize(8.5).fillColor('#333333').text(accident.description || 'Sin descripción detallada.', 60, p2Y + 30, {
-        width: doc.page.width - 120,
-        align: 'justify',
-        lineGap: 3
-      });
-
-      // PANEL 3: AFFECTED PERSONNEL
-      doc.y = p2Y + 95;
-      const p3Y = doc.y;
-      this.drawPanel(doc, 'Personal Involucrado / Afectado', p3Y, 110);
       
+      this.drawDataRow(doc, 'Nro. Control:', accident.accidentControlNumber || accident.accident_control_number, 50, startY);
+      this.drawDataRow(doc, 'Exp. INPSASEL:', accident.inpsaselFileNumber, 50, startY + 14);
+      this.drawDataRow(doc, 'Fecha / Hora:', `${dateFormatted} - ${accident.accidentTime || ''}`, 50, startY + 28);
+      this.drawDataRow(doc, 'Instalación:', facilityStr, 50, startY + 42, 250);
+      this.drawDataRow(doc, 'Gerencia:', accident.management ? accident.management.name : '-', 50, startY + 56, 250);
+
+      this.drawDataRow(doc, 'Tipo Incidente:', accident.type ? accident.type.name : '-', 315, startY, 230);
+      this.drawDataRow(doc, 'Agente Daño:', accident.damageAgent ? accident.damageAgent.name : '-', 315, startY + 14, 230);
+      this.drawDataRow(doc, 'Tipo Contacto:', accident.contactType ? accident.contactType.name : '-', 315, startY + 28, 230);
+      this.drawDataRow(doc, 'Estatus:', accident.processStatus ? accident.processStatus.name : '-', 315, startY + 42, 230);
+      this.drawDataRow(doc, 'Año / Periodo:', accident.period ? String(accident.period.annuality) : '-', 315, startY + 56, 230);
+
+      doc.y = startY + 76;
+
+      // Section 2: Technical Description
+      this.drawSectionHeader(doc, 'Descripción Técnica de los Hechos');
+      doc.font('Helvetica').fontSize(8).fillColor('#222222').text(accident.description || 'Sin descripción detallada.', 50, doc.y, {
+        width: doc.page.width - 100,
+        align: 'justify',
+        lineGap: 3.5
+      });
+      doc.y += 12;
+
+      // Section 3: Involved Employees
+      this.drawSectionHeader(doc, 'Trabajadores Afectados');
       const employees = accident.involvedEmployees || [];
       if (employees.length === 0) {
-        doc.font('Helvetica-Oblique').fontSize(8.5).text('No se registraron lesionados.', 60, p3Y + 35);
+        doc.font('Helvetica-Oblique').fontSize(8).fillColor('#666666').text('No se registraron lesionados.', 50, doc.y);
+        doc.y += 14;
       } else {
-        // Table inside panel
-        const tableStartY = p3Y + 28;
-        doc.rect(55, tableStartY, doc.page.width - 110, 15).fill('#005C9E');
+        const tableStartY = doc.y;
+        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('TRABAJADOR (CÉDULA / N° PERS.)', 60, tableStartY + 4);
-        doc.text('GERENCIA', 230, tableStartY + 4);
-        doc.text('LESION / DIAGNÓSTICO', 340, tableStartY + 4);
-        doc.text('DÍAS REPOSO', 475, tableStartY + 4);
+        doc.text('IDENTIFICACIÓN Y NOMBRES', 55, tableStartY + 4);
+        doc.text('GERENCIA / OCUPACIÓN', 215, tableStartY + 4);
+        doc.text('TIPO DE LESIÓN', 345, tableStartY + 4);
+        doc.text('NIVEL / CONSECUENCIA', 455, tableStartY + 4);
+        doc.text('DÍAS', 525, tableStartY + 4);
 
-        doc.y = tableStartY + 15;
+        doc.y = tableStartY + 16;
         employees.forEach((ie, idx) => {
-          if (doc.y > doc.page.height - 80) {
+          if (doc.y > doc.page.height - 70) {
             doc.addPage();
-            this.drawHeader(doc, `Reporte Detallado de Accidente (N° ${accident.inpsaselFileNumber || accident.id})`);
-            doc.y = 130;
+            this.drawHeader(doc, title);
           }
           
           const rowY = doc.y;
+          const rowHeight = 24;
           if (idx % 2 === 1) {
-            doc.rect(55, rowY, doc.page.width - 110, 18).fill('#F9F9F9');
+            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
           }
+          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
+          
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#222222');
+          const name = ie.employee ? `${ie.employee.lastName}, ${ie.employee.firstName}`.substring(0, 30) : '-';
+          doc.text(name, 55, rowY + 5);
+          doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
+          doc.text(`CI: ${ie.employee?.idCard || ie.employeePersonalNumber}`, 55, rowY + 14);
+          
+          const mgt = ie.employee?.management ? ie.employee.management.name : '-';
+          const occ = ie.employee?.occupation ? ie.employee.occupation.name : '-';
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(mgt.substring(0, 24), 215, rowY + 5);
+          doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
+          doc.text(occ.substring(0, 24), 215, rowY + 14);
           
-          const empName = ie.employee ? `${ie.employee.lastName}, ${ie.employee.firstName} (${ie.employee.idCard})` : `N° ${ie.employeePersonalNumber}`;
-          doc.text(empName.substring(0, 42), 60, rowY + 5);
-          
-          const empMgt = ie.employee && ie.employee.management ? ie.employee.management.name : '-';
-          doc.text(empMgt.substring(0, 20), 230, rowY + 5);
-          
-          const injury = ie.injuryType ? `${ie.injuryType.name} (${ie.magnitude ? ie.magnitude.name : ''})` : '-';
-          doc.text(injury.substring(0, 30), 340, rowY + 5);
-          
-          doc.text(ie.restDays ? String(ie.restDays) : '0', 485, rowY + 5);
-          
-          doc.y = rowY + 18;
+          doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(ie.injuryType ? ie.injuryType.name.substring(0, 24) : '-', 345, rowY + 5);
+          doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
+          doc.text(`Parte: ${ie.affectedArea || 'N/E'} / Nat: ${ie.injuryNature || 'N/E'}`, 345, rowY + 14);
+
+          const lvl = ie.injuryLevel === '1' ? 'LEVE' : ie.injuryLevel === '2' ? 'MODERADO' : ie.injuryLevel === '3' ? 'GRAVE' : ie.injuryLevel === '4' ? 'FATAL' : 'S/L';
+          doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(`NIVEL: ${lvl}`, 455, rowY + 5);
+          doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
+          doc.text(`${ie.injuryConsequence || 'N/E'}`.substring(0, 16), 455, rowY + 14);
+
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#E30613');
+          doc.text(ie.restDays ? String(ie.restDays) : '0', 525, rowY + 9);
+
+          doc.y = rowY + rowHeight;
         });
       }
+      doc.y += 10;
 
-      // PANEL 4: MEDICAL CENTER & OBSERVATIONS
-      doc.y += 15;
-      if (doc.y > doc.page.height - 130) {
+      // Section 4: Medical Center
+      if (doc.y > doc.page.height - 110) {
         doc.addPage();
-        this.drawHeader(doc, `Reporte Detallado de Accidente (N° ${accident.inpsaselFileNumber || accident.id})`);
+        this.drawHeader(doc, title);
       }
-      
-      const p4Y = doc.y;
-      this.drawPanel(doc, 'Atención Médica y Observaciones del Centro', p4Y, 70);
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-      doc.text('Centro de Atención:', 60, p4Y + 28);
+      this.drawSectionHeader(doc, 'Centro Asistencial y Diagnóstico');
+      const medY = doc.y;
       
       const centerName = accident.medicalCenter ? accident.medicalCenter.name : (accident.medicalCenterName || '-');
-      doc.font('Helvetica').text(centerName, 150, p4Y + 28);
-
-      doc.font('Helvetica-Bold').text('Dirección Centro:', 60, p4Y + 40);
       const centerAddr = accident.medicalCenter ? accident.medicalCenter.address : (accident.medicalCenterAddress || '-');
-      doc.font('Helvetica').text(centerAddr, 140, p4Y + 40);
 
-      doc.font('Helvetica-Bold').text('Observaciones Médicas:', 60, p4Y + 52);
-      doc.font('Helvetica').text(accident.medicalObservations || '-', 160, p4Y + 52);
-
-      // PANEL 5: WITNESSES & VERIFICATION
-      doc.y = p4Y + 85;
-      if (doc.y > doc.page.height - 150) {
-        doc.addPage();
-        this.drawHeader(doc, `Reporte Detallado de Accidente (N° ${accident.inpsaselFileNumber || accident.id})`);
-      }
-
-      const p5Y = doc.y;
-      this.drawPanel(doc, 'Testigos y Firmas de Control', p5Y, 80);
+      this.drawDataRow(doc, 'Centro Clínico:', centerName, 50, medY, 490);
+      this.drawDataRow(doc, 'Dirección Centro:', centerAddr, 50, medY + 14, 490);
+      this.drawDataRow(doc, 'Diagnóstico Médico:', accident.medicalObservations, 50, medY + 28, 490);
       
+      doc.y = medY + 55;
+
+      // Section 5: Witnesses
+      if (doc.y > doc.page.height - 90) {
+        doc.addPage();
+        this.drawHeader(doc, title);
+      }
+      this.drawSectionHeader(doc, 'Testigos Registrados');
       const witnesses = accident.witnesses || [];
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-      doc.text('Testigos del Evento:', 60, p5Y + 28);
-      
       if (witnesses.length === 0) {
-        doc.font('Helvetica-Oblique').text('No se registraron testigos presenciales.', 60, p5Y + 40);
+        doc.font('Helvetica-Oblique').fontSize(8).fillColor('#666666').text('No se reportaron testigos presenciales.', 50, doc.y);
+        doc.y += 14;
       } else {
-        let wText = witnesses.map(w => `${w.name} (${w.idCard || 'S/C'})`).join(', ');
-        doc.font('Helvetica').text(wText, 60, p5Y + 40, { width: doc.page.width - 120 });
+        const wText = witnesses.map((w, i) => `${i + 1}. ${w.name} (C.I: ${w.idCard || 'N/E'} - Tel: ${w.phone || 'N/E'})`).join('   |   ');
+        doc.font('Helvetica').fontSize(7.5).fillColor('#333333').text(wText, 50, doc.y, { width: doc.page.width - 100 });
+        doc.y += 20;
       }
 
-      // Add signature space
-      doc.y = p5Y + 110;
-      if (doc.y > doc.page.height - 120) {
+      // Signatures Space
+      doc.y += 20;
+      if (doc.y > doc.page.height - 90) {
         doc.addPage();
-        this.drawHeader(doc, `Reporte Detallado de Accidente (N° ${accident.inpsaselFileNumber || accident.id})`);
-        doc.y = 160;
+        this.drawHeader(doc, title);
+        doc.y += 40;
       }
       
-      const sigY = doc.y + 40;
-      doc.moveTo(100, sigY).lineTo(230, sigY).lineWidth(1).strokeColor('#999999').stroke();
-      doc.moveTo(doc.page.width - 230, sigY).lineTo(doc.page.width - 100, sigY).stroke();
+      const sigY = doc.y + 35;
+      doc.moveTo(80, sigY).lineTo(230, sigY).lineWidth(0.5).strokeColor('#888888').stroke();
+      doc.moveTo(doc.page.width - 230, sigY).lineTo(doc.page.width - 80, sigY).stroke();
       
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
-      doc.text('REPRESENTANTE ASHO (FIRMA Y SELLO)', 85, sigY + 8);
-      doc.text('DELEGADO DE PREVENCIÓN', doc.page.width - 225, sigY + 8);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor('#444444');
+      doc.text('DELEGADO DE PREVENCIÓN ASHO', 92, sigY + 5);
+      doc.text('REPRESENTANTE LEGAL CORPOELEC', doc.page.width - 222, sigY + 5);
 
       this.drawFooter(doc);
       doc.end();
@@ -321,208 +342,194 @@ class PdfGenerator {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      this.drawHeader(doc, `Reporte de Inspección ASHO (N° ${inspection.inspectionNumber || inspection.id})`);
+      const title = `Ficha de Inspección Técnica (N° ${inspection.inspectionNumber || inspection.id})`;
+      doc.currentTitle = title;
+      this.drawHeader(doc, title);
 
-      // PANEL 1: GENERAL INFO
-      const p1Y = doc.y;
-      this.drawPanel(doc, 'Datos Generales de la Inspección', p1Y, 85);
+      // Section 1: General Info
+      this.drawSectionHeader(doc, 'Generalidades');
+      const startY = doc.y;
       
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#333333');
-      doc.text('Código Inspección:', 60, p1Y + 30);
-      doc.font('Helvetica').text(inspection.inspectionNumber || `ID: ${inspection.id}`, 150, p1Y + 30);
-
-      doc.font('Helvetica-Bold').text('Fecha Ejecución:', 60, p1Y + 45);
       const dateFormatted = inspection.date ? new Date(inspection.date).toLocaleDateString('es-ES') : '-';
-      doc.font('Helvetica').text(dateFormatted, 140, p1Y + 45);
+      const inspectorStr = inspection.inspector ? `${inspection.inspector.lastName}, ${inspection.inspector.firstName} (Ficha: ${inspection.inspector.personalNumber})` : '-';
+      const facilityStr = inspection.facility ? `${inspection.facility.name} (${inspection.facility.location ? inspection.facility.location.name : ''})` : '-';
+      
+      this.drawDataRow(doc, 'Código Inspección:', inspection.inspectionNumber || `ID: ${inspection.id}`, 50, startY);
+      this.drawDataRow(doc, 'Fecha Ejecución:', dateFormatted, 50, startY + 14);
+      this.drawDataRow(doc, 'Instalación:', facilityStr, 50, startY + 28, 250);
 
-      doc.font('Helvetica-Bold').text('Inspector Responsable:', 60, p1Y + 60);
-      const inspectorStr = inspection.inspector ? `${inspection.inspector.lastName}, ${inspection.inspector.firstName} (${inspection.inspector.personalNumber})` : '-';
-      doc.font('Helvetica').text(inspectorStr, 165, p1Y + 60);
+      this.drawDataRow(doc, 'Inspector:', inspectorStr, 315, startY, 230);
+      this.drawDataRow(doc, 'Estatus:', inspection.status ? inspection.status.name : 'REGISTRADO', 315, startY + 14, 230);
+      
+      doc.y = startY + 46;
 
-      // Column 2 inside panel 1
-      doc.font('Helvetica-Bold').text('Instalación Evaluada:', 320, p1Y + 30);
-      const instStr = inspection.facility ? `${inspection.facility.name}` : '-';
-      doc.font('Helvetica').text(instStr, 420, p1Y + 30);
-
-      doc.font('Helvetica-Bold').text('Ubicación:', 320, p1Y + 45);
-      const locStr = inspection.facility && inspection.facility.location ? inspection.facility.location.name : '-';
-      doc.font('Helvetica').text(locStr, 375, p1Y + 45);
-
-      doc.font('Helvetica-Bold').text('Estatus Reporte:', 320, p1Y + 60);
-      doc.font('Helvetica').fillColor('#005C9E').text(inspection.status ? inspection.status.name : 'REGISTRADO', 400, p1Y + 60);
-
-      // PANEL 2: OBSERVATIONS
-      doc.y = p1Y + 100;
-      const p2Y = doc.y;
-      this.drawPanel(doc, 'Observaciones y Diagnóstico Inicial', p2Y, 70);
-      doc.font('Helvetica').fontSize(8.5).fillColor('#333333').text(inspection.observations || 'Sin observaciones registradas.', 60, p2Y + 28, {
-        width: doc.page.width - 120,
+      // Section 2: Observations
+      this.drawSectionHeader(doc, 'Diagnóstico y Observaciones de Campo');
+      doc.font('Helvetica').fontSize(8).fillColor('#222222').text(inspection.observations || 'Sin observaciones registradas.', 50, doc.y, {
+        width: doc.page.width - 100,
         align: 'justify'
       });
+      doc.y += 12;
 
-      doc.y = p2Y + 85;
-
-      // specialized details based on type
+      // Section 3: Specialized Modules
       if (inspection.extinguisherInspection) {
-        // EXTINGUISHER DETAILS
-        if (doc.y > doc.page.height - 180) {
-          doc.addPage();
-          this.drawHeader(doc, `Reporte de Inspección ASHO (N° ${inspection.inspectionNumber || inspection.id})`);
-        }
-        
         const extInsp = inspection.extinguisherInspection;
         const details = extInsp.details || [];
         
-        const pExtY = doc.y;
-        this.drawPanel(doc, `Módulo Especializado: Inspección de Extintores (${extInsp.brand || 'General'})`, pExtY, 150 + (details.length * 18));
-        
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-        doc.text('Ubicación del Extintor:', 60, pExtY + 28);
-        doc.font('Helvetica').text(extInsp.locationDetails || '-', 165, pExtY + 28);
-        
-        // Table headers for items
-        const tableStartY = pExtY + 45;
-        doc.rect(55, tableStartY, doc.page.width - 110, 15).fill('#005C9E');
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('CÓDIGO / CAPACIDAD', 60, tableStartY + 4);
-        doc.text('AGENTE EXTINTOR', 190, tableStartY + 4);
-        doc.text('MANÓMETRO', 300, tableStartY + 4);
-        doc.text('PRECINTO / MANGUERA', 380, tableStartY + 4);
-        doc.text('ESTATUS', 480, tableStartY + 4);
+        this.drawSectionHeader(doc, `Evaluación de Extintores (${extInsp.brand || 'General'})`);
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#444444').text(`Detalles Ubicación:  ${extInsp.locationDetails || 'Instalación general'}`, 50, doc.y);
+        doc.y += 14;
 
-        doc.y = tableStartY + 15;
+        const tableStartY = doc.y;
+        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+        doc.text('CÓDIGO / CAP.', 55, tableStartY + 4);
+        doc.text('AGENTE', 160, tableStartY + 4);
+        doc.text('PRESIÓN', 270, tableStartY + 4);
+        doc.text('MANGUERA / PRECINTO', 360, tableStartY + 4);
+        doc.text('APROBADO', 485, tableStartY + 4);
+
+        doc.y = tableStartY + 16;
         details.forEach((det, idx) => {
-          const rowY = doc.y;
-          if (idx % 2 === 1) {
-            doc.rect(55, rowY, doc.page.width - 110, 18).fill('#F9F9F9');
+          if (doc.y > doc.page.height - 65) {
+            doc.addPage();
+            this.drawHeader(doc, title);
           }
+          
+          const rowY = doc.y;
+          const rowHeight = 18;
+          if (idx % 2 === 1) {
+            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
+          }
+          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
+          
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(`${det.code || 'N/A'} (${det.capacity || 'S/C'})`, 55, rowY + 5);
+          doc.text(det.agentType ? det.agentType.name : '-', 160, rowY + 5);
           
-          doc.text(`${det.code || 'N/A'} - ${det.capacity || ''}`, 60, rowY + 5);
-          doc.text(det.agentType ? det.agentType.name : '-', 190, rowY + 5);
-          doc.text(det.pressureStatus === 1 ? 'OK' : 'RECARGAR', 300, rowY + 5);
+          doc.font('Helvetica-Bold').fillColor(det.pressureStatus === 1 ? 'green' : 'red');
+          doc.text(det.pressureStatus === 1 ? 'NORMAL' : 'RECARGAR', 270, rowY + 5);
           
-          const safety = `${det.safetySeal === 1 ? 'SELLO OK' : 'SIN SELLO'} / ${det.hoseStatus === 1 ? 'MANGUERA OK' : 'DAÑADA'}`;
-          doc.text(safety, 380, rowY + 5);
+          doc.font('Helvetica').fillColor('#333333');
+          const safety = `${det.hoseStatus === 1 ? 'OK' : 'DAÑADA'} / ${det.safetySeal === 1 ? 'SELLO OK' : 'ROTO'}`;
+          doc.text(safety, 360, rowY + 5);
           
-          doc.font('Helvetica-Bold').fillColor(det.status === 'APROBADO' ? 'green' : 'red');
-          doc.text(det.status || 'EVALUADO', 480, rowY + 5);
+          const approved = det.status === 'APROBADO';
+          doc.font('Helvetica-Bold').fillColor(approved ? 'green' : 'red');
+          doc.text(approved ? 'SÍ' : 'NO', 485, rowY + 5);
           
-          doc.y = rowY + 18;
+          doc.y = rowY + rowHeight;
         });
       } else if (inspection.vehicleInspection) {
-        // VEHICLE DETAILS
-        if (doc.y > doc.page.height - 180) {
-          doc.addPage();
-          this.drawHeader(doc, `Reporte de Inspección ASHO (N° ${inspection.inspectionNumber || inspection.id})`);
-        }
-        
         const vehInsp = inspection.vehicleInspection;
         const checks = vehInsp.accessoryChecks || [];
         
-        const pVehY = doc.y;
-        this.drawPanel(doc, `Módulo Especializado: Inspección de Flota de Vehículos`, pVehY, 150 + (checks.length * 18));
+        this.drawSectionHeader(doc, 'Inspección de Unidad Vehicular');
+        const vehStr = vehInsp.vehicle ? `${vehInsp.vehicle.brand || ''} ${vehInsp.vehicle.model ? vehInsp.vehicle.model.name : ''} (Placa: ${vehInsp.plate_id || vehInsp.vehicle.plate})` : `Placa: ${vehInsp.plate_id}`;
         
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-        doc.text('Vehículo Evaluado:', 60, pVehY + 28);
-        const vehStr = vehInsp.vehicle ? `${vehInsp.vehicle.brand || ''} ${vehInsp.vehicle.model ? vehInsp.vehicle.model.name : ''} (PLACA: ${vehInsp.plate_id || vehInsp.vehicle.plate})` : `Placa: ${vehInsp.plate_id}`;
-        doc.font('Helvetica').text(vehStr, 150, pVehY + 28);
+        const vehY = doc.y;
+        this.drawDataRow(doc, 'Vehículo:', vehStr, 50, vehY, 250);
+        this.drawDataRow(doc, 'Kilometraje:', `${vehInsp.mileage || '0'} Km`, 315, vehY, 230);
+        
+        doc.y = vehY + 20;
 
-        doc.font('Helvetica-Bold').text('Kilometraje actual:', 320, pVehY + 28);
-        doc.font('Helvetica').text(`${vehInsp.mileage || '0'} Km`, 410, pVehY + 28);
-
-        // Table headers for items
-        const tableStartY = pVehY + 45;
-        doc.rect(55, tableStartY, doc.page.width - 110, 15).fill('#005C9E');
+        const tableStartY = doc.y;
+        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('ACCESORIO / ELEMENTO DE SEGURIDAD', 60, tableStartY + 4);
-        doc.text('ESTATUS EVALUACIÓN', 280, tableStartY + 4);
-        doc.text('OBSERVACIONES DE CAMPO', 380, tableStartY + 4);
+        doc.text('ACCESORIO / ELEMENTO DE SEGURIDAD', 55, tableStartY + 4);
+        doc.text('ESTATUS', 300, tableStartY + 4);
+        doc.text('OBSERVACIONES GENERALES', 380, tableStartY + 4);
 
-        doc.y = tableStartY + 15;
+        doc.y = tableStartY + 16;
         checks.forEach((chk, idx) => {
-          const rowY = doc.y;
-          if (idx % 2 === 1) {
-            doc.rect(55, rowY, doc.page.width - 110, 18).fill('#F9F9F9');
+          if (doc.y > doc.page.height - 65) {
+            doc.addPage();
+            this.drawHeader(doc, title);
           }
+          
+          const rowY = doc.y;
+          const rowHeight = 18;
+          if (idx % 2 === 1) {
+            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
+          }
+          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
+          
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(chk.accessory ? chk.accessory.name : `Accesorio ID: ${chk.accessoryId}`, 55, rowY + 5);
           
-          doc.text(chk.accessory ? chk.accessory.name : `Accesorio ID: ${chk.accessoryId}`, 60, rowY + 5);
+          const isOpt = chk.status === 'OPTIMO';
+          doc.font('Helvetica-Bold').fillColor(isOpt ? 'green' : 'red');
+          doc.text(chk.status || 'EVALUADO', 300, rowY + 5);
           
-          doc.font('Helvetica-Bold').fillColor(chk.status === 'OPTIMO' ? 'green' : 'red');
-          doc.text(chk.status || 'EVALUADO', 280, rowY + 5);
+          doc.font('Helvetica').fillColor('#555555');
+          doc.text(chk.observations || '-', 380, rowY + 5, { width: 160 });
           
-          doc.font('Helvetica').fillColor('#333333');
-          doc.text(chk.observations || 'Sin observaciones.', 380, rowY + 5);
-          
-          doc.y = rowY + 18;
+          doc.y = rowY + rowHeight;
         });
       } else if (inspection.protectionInspection) {
-        // PROTECTION INVENTORY DETAILS
-        if (doc.y > doc.page.height - 180) {
-          doc.addPage();
-          this.drawHeader(doc, `Reporte de Inspección ASHO (N° ${inspection.inspectionNumber || inspection.id})`);
-        }
-        
         const protInsp = inspection.protectionInspection;
         const details = protInsp.details || [];
         
-        const pProtY = doc.y;
-        this.drawPanel(doc, `Módulo Especializado: Inventario y Entrega de Equipos de Protección`, pProtY, 150 + (details.length * 18));
-        
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
-        doc.text('Responsable ASHO:', 60, pProtY + 28);
+        this.drawSectionHeader(doc, 'Control de Inventario de Equipos de Protección');
         const respStr = protInsp.responsible ? `${protInsp.responsible.lastName}, ${protInsp.responsible.firstName}` : `ID: ${protInsp.responsible_id}`;
-        doc.font('Helvetica').text(respStr, 155, pProtY + 28);
+        
+        const protY = doc.y;
+        this.drawDataRow(doc, 'Responsable Almacén:', respStr, 50, protY, 490);
+        
+        doc.y = protY + 20;
 
-        doc.font('Helvetica-Bold').text('Fecha Registro:', 320, pProtY + 28);
-        doc.font('Helvetica').text(dateFormatted, 390, pProtY + 28);
-
-        // Table headers for items
-        const tableStartY = pProtY + 45;
-        doc.rect(55, tableStartY, doc.page.width - 110, 15).fill('#005C9E');
+        const tableStartY = doc.y;
+        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('CATEGORÍA DE EQUIPO DE PROTECCIÓN', 60, tableStartY + 4);
-        doc.text('CANTIDAD DISPONIBLE', 280, tableStartY + 4);
-        doc.text('ESTATUS ALMACÉN', 380, tableStartY + 4);
-        doc.text('OBSERVACIONES', 470, tableStartY + 4);
+        doc.text('CATEGORÍA DE EQUIPO DE PROTECCIÓN', 55, tableStartY + 4);
+        doc.text('STOCK', 300, tableStartY + 4);
+        doc.text('ESTADO', 380, tableStartY + 4);
+        doc.text('OBSERVACIONES DE DETALLE', 450, tableStartY + 4);
 
-        doc.y = tableStartY + 15;
+        doc.y = tableStartY + 16;
         details.forEach((det, idx) => {
-          const rowY = doc.y;
-          if (idx % 2 === 1) {
-            doc.rect(55, rowY, doc.page.width - 110, 18).fill('#F9F9F9');
+          if (doc.y > doc.page.height - 65) {
+            doc.addPage();
+            this.drawHeader(doc, title);
           }
+          
+          const rowY = doc.y;
+          const rowHeight = 18;
+          if (idx % 2 === 1) {
+            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
+          }
+          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
+          
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          doc.text(det.category ? det.category.name : `Categoría ID: ${det.categoryId}`, 55, rowY + 5);
+          doc.text(String(det.quantity || 0), 300, rowY + 5);
           
-          doc.text(det.category ? det.category.name : `Categoría ID: ${det.categoryId}`, 60, rowY + 5);
-          doc.text(String(det.quantity || 0), 280, rowY + 5);
-          
-          doc.font('Helvetica-Bold').fillColor(det.status === 'DISPONIBLE' ? 'green' : 'orange');
+          const isDisp = det.status === 'DISPONIBLE';
+          doc.font('Helvetica-Bold').fillColor(isDisp ? 'green' : 'orange');
           doc.text(det.status || 'ACTIVO', 380, rowY + 5);
           
-          doc.font('Helvetica').fillColor('#333333');
-          doc.text(det.observations || '-', 470, rowY + 5);
+          doc.font('Helvetica').fillColor('#555555');
+          doc.text(det.observations || '-', 450, rowY + 5, { width: 90 });
           
-          doc.y = rowY + 18;
+          doc.y = rowY + rowHeight;
         });
       }
 
-      // Add signature space
-      doc.y += 25;
-      if (doc.y > doc.page.height - 120) {
+      // Signature area
+      doc.y += 20;
+      if (doc.y > doc.page.height - 85) {
         doc.addPage();
-        this.drawHeader(doc, `Reporte de Inspección ASHO (N° ${inspection.inspectionNumber || inspection.id})`);
-        doc.y = 160;
+        this.drawHeader(doc, title);
+        doc.y += 40;
       }
       
       const sigY = doc.y + 40;
-      doc.moveTo(100, sigY).lineTo(230, sigY).lineWidth(1).strokeColor('#999999').stroke();
-      doc.moveTo(doc.page.width - 230, sigY).lineTo(doc.page.width - 100, sigY).stroke();
+      doc.moveTo(80, sigY).lineTo(230, sigY).lineWidth(0.5).strokeColor('#888888').stroke();
+      doc.moveTo(doc.page.width - 230, sigY).lineTo(doc.page.width - 80, sigY).stroke();
       
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
-      doc.text('FIRMA INSPECTOR DE SEGURIDAD', 90, sigY + 8);
-      doc.text('FIRMA RESPONSABLE DE INSTALACIÓN', doc.page.width - 235, sigY + 8);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#444444');
+      doc.text('INSPECTOR DE SEGURIDAD ASHO', 88, sigY + 5);
+      doc.text('DELEGADO DE INSTALACIÓN / PREVENCIÓN', doc.page.width - 240, sigY + 5);
 
       this.drawFooter(doc);
       doc.end();
@@ -541,64 +548,72 @@ class PdfGenerator {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      this.drawHeader(doc, 'Listado General de Accidentes ASHO');
+      const title = 'Listado General de Accidentes ASHO';
+      doc.currentTitle = title;
+      this.drawHeader(doc, title);
 
       // Stats block
-      doc.rect(50, doc.y, doc.page.width - 100, 45).lineWidth(1).strokeColor('#E30613').stroke();
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#E30613').text('ESTADÍSTICAS DEL REGISTRO', 60, doc.y + 8);
-      doc.font('Helvetica').fontSize(9).fillColor('#333333').text(`Total Accidentes: ${accidents.length} incidentes registrados`, 60, doc.y + 24);
-      doc.font('Helvetica').fontSize(9).text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, doc.y + 24, { align: 'right' });
+      const statsY = doc.y;
+      doc.rect(50, statsY, doc.page.width - 100, 32).fill('#FDF8F8');
+      doc.rect(50, statsY, doc.page.width - 100, 32).lineWidth(0.5).strokeColor('#F2CFCF').stroke();
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#E30613').text('ESTADÍSTICAS DEL REGISTRO', 65, statsY + 12);
+      doc.font('Helvetica').fontSize(8).fillColor('#333333').text(`Total Accidentes: ${accidents.length} incidentes registrados`, 215, statsY + 12);
+      doc.font('Helvetica').fontSize(8).text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, statsY + 12, { align: 'right', width: 140 });
       
-      doc.y += 65;
+      doc.y = statsY + 45;
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 20).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-      doc.text('CÓDIGO/INPSASEL', 55, startY + 6);
-      doc.text('FECHA', 160, startY + 6);
-      doc.text('TIPO ACCIDENTE', 220, startY + 6);
-      doc.text('INSTALACIÓN / UBICACIÓN', 340, startY + 6);
-      doc.text('ESTATUS', 480, startY + 6);
+      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+      doc.text('CÓDIGO/CONTROL', 55, startY + 5);
+      doc.text('FECHA', 170, startY + 5);
+      doc.text('TIPO ACCIDENTE', 230, startY + 5);
+      doc.text('INSTALACIÓN / DIRECCIÓN', 350, startY + 5);
+      doc.text('ESTATUS', 485, startY + 5);
 
-      doc.y = startY + 20;
+      doc.y = startY + 18;
 
       let isEven = false;
       accidents.forEach((acc) => {
-        if (doc.y > doc.page.height - 80) {
+        if (doc.y > doc.page.height - 65) {
           doc.addPage();
-          this.drawHeader(doc, 'Listado General de Accidentes ASHO');
+          this.drawHeader(doc, title);
           
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 20).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-          doc.text('CÓDIGO/INPSASEL', 55, pageStartY + 6);
-          doc.text('FECHA', 160, pageStartY + 6);
-          doc.text('TIPO ACCIDENTE', 220, pageStartY + 6);
-          doc.text('INSTALACIÓN / UBICACIÓN', 340, pageStartY + 6);
-          doc.text('ESTATUS', 480, pageStartY + 6);
-          doc.y = pageStartY + 20;
+          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+          doc.text('CÓDIGO/CONTROL', 55, pageStartY + 5);
+          doc.text('FECHA', 170, pageStartY + 5);
+          doc.text('TIPO ACCIDENTE', 230, pageStartY + 5);
+          doc.text('INSTALACIÓN / DIRECCIÓN', 350, pageStartY + 5);
+          doc.text('ESTATUS', 485, pageStartY + 5);
+          doc.y = pageStartY + 18;
         }
 
-        const rowHeight = 22;
+        const rowHeight = 20;
+        const rowY = doc.y;
         if (isEven) {
-          doc.rect(50, doc.y, doc.page.width - 100, rowHeight).fill('#F9F9F9');
+          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
         }
+        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
         
-        doc.font('Helvetica').fontSize(8).fillColor('#333333');
-        doc.text(acc.inpsaselFileNumber || `ID: ${acc.id}`, 55, doc.y + 7);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+        const code = acc.accidentControlNumber || acc.accident_control_number || acc.inpsaselFileNumber || `ID: ${acc.id}`;
+        doc.text(code.substring(0, 24), 55, rowY + 6);
         
         const dateStr = acc.accidentDate ? new Date(acc.accidentDate).toLocaleDateString('es-ES') : '-';
-        doc.text(dateStr, 160, doc.y + 7);
+        doc.font('Helvetica').fontSize(7.5).fillColor('#444444');
+        doc.text(dateStr, 170, rowY + 6);
         
         const typeStr = acc.type ? acc.type.name : '-';
-        doc.text(typeStr.substring(0, 22), 220, doc.y + 7);
+        doc.text(typeStr.substring(0, 24), 230, rowY + 6);
         
         const instStr = acc.facility ? acc.facility.name : '-';
-        doc.text(instStr.substring(0, 28), 340, doc.y + 7);
+        doc.text(instStr.substring(0, 28), 350, rowY + 6);
         
         doc.font('Helvetica-Bold').fillColor('#E30613');
-        doc.text(acc.processStatus ? acc.processStatus.name : 'REGISTRADO', 480, doc.y + 7);
+        doc.text(acc.processStatus ? acc.processStatus.name : 'REGISTRADO', 485, rowY + 6);
 
         doc.y += rowHeight;
         isEven = !isEven;
@@ -621,70 +636,75 @@ class PdfGenerator {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      this.drawHeader(doc, 'Listado General de Inspecciones ASHO');
+      const title = 'Listado General de Inspecciones ASHO';
+      doc.currentTitle = title;
+      this.drawHeader(doc, title);
 
       // Stats block
-      doc.rect(50, doc.y, doc.page.width - 100, 45).lineWidth(1).strokeColor('#005C9E').stroke();
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#005C9E').text('ESTADÍSTICAS DEL REGISTRO', 60, doc.y + 8);
-      doc.font('Helvetica').fontSize(9).fillColor('#333333').text(`Total Inspecciones: ${inspections.length} informes registrados`, 60, doc.y + 24);
-      doc.font('Helvetica').fontSize(9).text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, doc.y + 24, { align: 'right' });
+      const statsY = doc.y;
+      doc.rect(50, statsY, doc.page.width - 100, 32).fill('#F4F7FA');
+      doc.rect(50, statsY, doc.page.width - 100, 32).lineWidth(0.5).strokeColor('#CCD5E0').stroke();
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E').text('ESTADÍSTICAS DEL REGISTRO', 65, statsY + 12);
+      doc.font('Helvetica').fontSize(8).fillColor('#333333').text(`Total Inspecciones: ${inspections.length} informes registrados`, 215, statsY + 12);
+      doc.font('Helvetica').fontSize(8).text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, statsY + 12, { align: 'right', width: 140 });
       
-      doc.y += 65;
+      doc.y = statsY + 45;
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 20).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-      doc.text('CÓDIGO/INSP.', 55, startY + 6);
-      doc.text('FECHA', 160, startY + 6);
-      doc.text('INSTALACIÓN EVALUADA', 220, startY + 6);
-      doc.text('INSPECTOR RESPONSABLE', 360, startY + 6);
-      doc.text('TIPO / ESTATUS', 485, startY + 6);
+      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+      doc.text('CÓDIGO/INSP.', 55, startY + 5);
+      doc.text('FECHA', 160, startY + 5);
+      doc.text('INSTALACIÓN EVALUADA', 220, startY + 5);
+      doc.text('INSPECTOR RESPONSABLE', 360, startY + 5);
+      doc.text('TIPO / ESTATUS', 485, startY + 5);
 
-      doc.y = startY + 20;
+      doc.y = startY + 18;
 
       let isEven = false;
       inspections.forEach((insp) => {
-        if (doc.y > doc.page.height - 80) {
+        if (doc.y > doc.page.height - 65) {
           doc.addPage();
-          this.drawHeader(doc, 'Listado General de Inspecciones ASHO');
+          this.drawHeader(doc, title);
           
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 20).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(8).fillColor('#FFFFFF');
-          doc.text('CÓDIGO/INSP.', 55, pageStartY + 6);
-          doc.text('FECHA', 160, pageStartY + 6);
-          doc.text('INSTALACIÓN EVALUADA', 220, pageStartY + 6);
-          doc.text('INSPECTOR RESPONSABLE', 360, pageStartY + 6);
-          doc.text('TIPO / ESTATUS', 485, pageStartY + 6);
-          doc.y = pageStartY + 20;
+          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+          doc.text('CÓDIGO/INSP.', 55, pageStartY + 5);
+          doc.text('FECHA', 160, pageStartY + 5);
+          doc.text('INSTALACIÓN EVALUADA', 220, pageStartY + 5);
+          doc.text('INSPECTOR RESPONSABLE', 360, pageStartY + 5);
+          doc.text('TIPO / ESTATUS', 485, pageStartY + 5);
+          doc.y = pageStartY + 18;
         }
 
-        const rowHeight = 22;
+        const rowHeight = 20;
+        const rowY = doc.y;
         if (isEven) {
-          doc.rect(50, doc.y, doc.page.width - 100, rowHeight).fill('#F9F9F9');
+          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
         }
+        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
         
-        doc.font('Helvetica').fontSize(8).fillColor('#333333');
-        doc.text(insp.inspectionNumber || `ID: ${insp.id}`, 55, doc.y + 7);
+        doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+        doc.text(insp.inspectionNumber || `ID: ${insp.id}`, 55, rowY + 6);
         
         const dateStr = insp.date ? new Date(insp.date).toLocaleDateString('es-ES') : '-';
-        doc.text(dateStr, 160, doc.y + 7);
+        doc.text(dateStr, 160, rowY + 6);
         
         const instStr = insp.facility ? insp.facility.name : '-';
-        doc.text(instStr.substring(0, 25), 220, doc.y + 7);
+        doc.text(instStr.substring(0, 25), 220, rowY + 6);
         
         const inspName = insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-';
-        doc.text(inspName.substring(0, 25), 360, doc.y + 7);
+        doc.text(inspName.substring(0, 25), 360, rowY + 6);
         
-        // Type details
         let typeStr = 'General';
         if (insp.extinguisherInspection) typeStr = 'Extintores';
         else if (insp.vehicleInspection) typeStr = 'Vehicular';
         else if (insp.protectionInspection) typeStr = 'Protección';
         
         doc.font('Helvetica-Bold').fillColor('#005C9E');
-        doc.text(`${typeStr}`, 485, doc.y + 7);
+        doc.text(`${typeStr}`, 485, rowY + 6);
 
         doc.y += rowHeight;
         isEven = !isEven;

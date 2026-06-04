@@ -130,6 +130,10 @@ const Accident = sequelize.define('Accident', {
   assetsProcessAffectation: {
     type: DataTypes.STRING(50),
     field: 'assets_process_affectation'
+  },
+  accidentControlNumber: {
+    type: DataTypes.STRING(50),
+    field: 'accident_control_number'
   }
 }, {
   tableName: 'accident',
