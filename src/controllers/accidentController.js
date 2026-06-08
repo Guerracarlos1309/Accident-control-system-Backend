@@ -26,6 +26,33 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+/**
+ * Get the next available correlative sequence number for a given year, prefix and nature
+ */
+exports.getNextCorrelative = async (req, res, next) => {
+  try {
+    const { year, nature, prefix } = req.query;
+    if (!year || !nature || !prefix) {
+      return res.status(400).json({ message: "year, nature and prefix query params are required" });
+    }
+
+    const yearSuffix = year.slice(-2); // e.g. "2026" -> "26"
+    const pattern = `${prefix}-${yearSuffix}-%-${nature}`;
+
+    const count = await Accident.count({
+      where: {
+        accidentControlNumber: {
+          [Op.like]: pattern
+        }
+      }
+    });
+
+    res.status(200).json({ count: count + 1 });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /*
   Get all accidents with summary info
  */
@@ -44,7 +71,13 @@ exports.getAllAccidents = async (req, res, next) => {
         {
           model: EmployeeAccident,
           as: "involvedEmployees",
-          include: ["employee"],
+          include: [
+            {
+              model: Employee,
+              as: "employee",
+              include: [{ model: Management, as: "management" }]
+            }
+          ],
         },
         { model: InspectionStatus, as: "processStatus" },
         { model: Management, as: "management" },
@@ -248,6 +281,29 @@ exports.createAccident = async (req, res, next) => {
       });
       const sequence = (count + 1).toString().padStart(4, "0");
       accidentData.inpsaselFileNumber = `INP-${year}-${sequence}`;
+    }
+
+    // 1.2 Ensure accidentControlNumber is unique and doesn't conflict
+    if (accidentData.accidentControlNumber) {
+      let existingControl = await Accident.findOne({
+        where: { accidentControlNumber: accidentData.accidentControlNumber },
+        transaction: t
+      });
+      if (existingControl) {
+        const parts = accidentData.accidentControlNumber.split("-");
+        if (parts.length === 4) {
+          let suffix = parseInt(parts[2], 10) || 1;
+          while (existingControl) {
+            suffix++;
+            const paddedSuffix = String(suffix).padStart(3, "0");
+            accidentData.accidentControlNumber = `${parts[0]}-${parts[1]}-${paddedSuffix}-${parts[3]}`;
+            existingControl = await Accident.findOne({
+              where: { accidentControlNumber: accidentData.accidentControlNumber },
+              transaction: t
+            });
+          }
+        }
+      }
     }
 
     // 2. Create the main accident record

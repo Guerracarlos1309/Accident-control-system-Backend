@@ -26,6 +26,11 @@ const Vehicle = sequelize.define('Vehicle', {
   year: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  facilityId: {
+    type: DataTypes.INTEGER,
+    field: 'facility_id',
+    allowNull: true
   }
 }, {
   tableName: 'vehicle',

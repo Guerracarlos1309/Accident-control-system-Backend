@@ -5,6 +5,7 @@ const {
   Vehicle,
   VehicleImage,
   VehicleAccessory,
+  Facility,
 } = require("../models");
 
 /*
@@ -54,7 +55,8 @@ exports.getVehicles = async (req, res, next) => {
       include: [
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
-        { model: VehicleImage, as: "images" }
+        { model: VehicleImage, as: "images" },
+        { model: Facility, as: "facility" }
       ],
     });
     res.status(200).json(vehicles);
@@ -74,7 +76,8 @@ exports.getVehicleByPlate = async (req, res, next) => {
       include: [
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
-        { model: VehicleImage, as: "images" }
+        { model: VehicleImage, as: "images" },
+        { model: Facility, as: "facility" }
       ],
     });
 
@@ -109,7 +112,7 @@ exports.createVehicle = async (req, res, next) => {
     if (error.name === "SequelizeUniqueConstraintError") {
       return res
         .status(400)
-        .json({ message: "Vehicle with this plate already exists" });
+        .json({ message: "Ya existe un vehículo registrado con esta placa" });
     }
     next(error);
   }

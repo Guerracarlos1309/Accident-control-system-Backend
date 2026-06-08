@@ -86,7 +86,7 @@ class PdfGenerator {
   /**
    * 1. GENERATE PAYROLL (NOMINAS) REPORT PDF
    */
-  static generatePayrollPdf(employees) {
+  static generatePayrollPdf(employees, columns) {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
       const chunks = [];
@@ -98,6 +98,53 @@ class PdfGenerator {
       const title = 'Reporte de Nómina de Personal';
       doc.currentTitle = title;
       this.drawHeader(doc, title);
+
+      // Define all possible columns and their weights
+      const allCols = [
+        { key: 'personalNumber', label: 'FICHA / PERS.', weight: 65 },
+        { key: 'idCard', label: 'CÉDULA', weight: 70 },
+        { key: 'fullName', label: 'APELLIDOS Y NOMBRES', weight: 160 },
+        { key: 'management', label: 'GERENCIA', weight: 110 },
+        { key: 'jobTitle', label: 'CARGO', weight: 90 },
+        { key: 'occupation', label: 'OCUPACIÓN', weight: 90 },
+        { key: 'phone', label: 'TELÉFONO', weight: 75 },
+        { key: 'gender', label: 'GÉNERO', weight: 45 },
+        { key: 'birthDate', label: 'FEC. NACIMIENTO', weight: 80 },
+        { key: 'email', label: 'CORREO ELECTRÓNICO', weight: 125 },
+        { key: 'maritalStatus', label: 'ESTADO CIVIL', weight: 70 },
+        { key: 'dominantHand', label: 'LATERALIDAD', weight: 70 },
+        { key: 'birthPlace', label: 'LUGAR NACIMIENTO', weight: 110 },
+        { key: 'homeAddress', label: 'DIRECCIÓN', weight: 140 },
+        { key: 'educationLevel', label: 'NIV. EDUCATIVO', weight: 95 },
+        { key: 'hireDate', label: 'FEC. INGRESO', weight: 75 },
+        { key: 'officePhone', label: 'TEL. OFICINA', weight: 75 }
+      ];
+
+      // Filter based on user selection
+      let selectedCols = allCols;
+      if (columns && Array.isArray(columns) && columns.length > 0) {
+        selectedCols = allCols.filter(c => columns.includes(c.key));
+      }
+      if (selectedCols.length === 0) selectedCols = allCols;
+
+      // Calculate layout coordinates
+      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
+      const printableWidth = doc.page.width - 100;
+      let currentX = 50;
+      selectedCols.forEach(c => {
+        c.width = (c.weight / totalWeight) * printableWidth;
+        c.x = currentX;
+        currentX += c.width;
+      });
+
+      // Helper to draw headers
+      const drawTableHeaders = (y) => {
+        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+        selectedCols.forEach(col => {
+          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
+        });
+      };
 
       // Summary block
       const summaryY = doc.y;
@@ -111,14 +158,7 @@ class PdfGenerator {
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-      doc.text('FICHA / PERS.', 55, startY + 5);
-      doc.text('CÉDULA', 115, startY + 5);
-      doc.text('APELLIDOS Y NOMBRES', 185, startY + 5);
-      doc.text('GERENCIA', 345, startY + 5);
-      doc.text('CARGO / OCUPACIÓN', 460, startY + 5);
-
+      drawTableHeaders(startY);
       doc.y = startY + 18;
 
       let isEven = false;
@@ -128,13 +168,7 @@ class PdfGenerator {
           this.drawHeader(doc, title);
           
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-          doc.text('FICHA / PERS.', 55, pageStartY + 5);
-          doc.text('CÉDULA', 115, pageStartY + 5);
-          doc.text('APELLIDOS Y NOMBRES', 185, pageStartY + 5);
-          doc.text('GERENCIA', 345, pageStartY + 5);
-          doc.text('CARGO / OCUPACIÓN', 460, pageStartY + 5);
+          drawTableHeaders(pageStartY);
           doc.y = pageStartY + 18;
         }
 
@@ -147,17 +181,57 @@ class PdfGenerator {
         doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#EAEAEA');
 
         doc.font('Helvetica').fontSize(7.5).fillColor('#222222');
-        doc.text(emp.personalNumber || '-', 55, rowY + 5);
-        doc.text(emp.idCard || '-', 115, rowY + 5);
-        
-        const fullName = `${emp.lastName || ''}, ${emp.firstName || ''}`.trim();
-        doc.text(fullName.substring(0, 30), 185, rowY + 5);
-        
-        const mgt = emp.management ? emp.management.name : '-';
-        doc.text(mgt.substring(0, 22), 345, rowY + 5);
-        
-        const job = emp.jobTitle ? emp.jobTitle.name : (emp.occupation ? emp.occupation.name : '-');
-        doc.text(job.substring(0, 22), 460, rowY + 5);
+        selectedCols.forEach(col => {
+          let val = '';
+          if (col.key === 'personalNumber') {
+            val = emp.personalNumber || '-';
+          } else if (col.key === 'idCard') {
+            val = emp.idCard || '-';
+          } else if (col.key === 'fullName') {
+            val = `${emp.lastName || ''}, ${emp.firstName || ''}`.trim() || '-';
+          } else if (col.key === 'management') {
+            val = emp.management ? emp.management.name : '-';
+          } else if (col.key === 'jobTitle') {
+            val = emp.jobTitle ? emp.jobTitle.name : '-';
+          } else if (col.key === 'occupation') {
+            val = emp.occupation ? emp.occupation.name : '-';
+          } else if (col.key === 'phone') {
+            val = emp.phone || '-';
+          } else if (col.key === 'gender') {
+            val = emp.gender === 'M' ? 'MASCULINO' : emp.gender === 'F' ? 'FEMENINO' : 'OTRO';
+          } else if (col.key === 'birthDate') {
+            val = emp.birthDate || '-';
+          } else if (col.key === 'email') {
+            val = emp.email || '-';
+          } else if (col.key === 'maritalStatus') {
+            const statuses = { "1": "SOLTERO/A", "2": "CASADO/A", "3": "DIVORCIADO/A", "4": "VIUDO/A", "5": "CONCUBINATO" };
+            val = statuses[String(emp.maritalStatus)] || '-';
+          } else if (col.key === 'dominantHand') {
+            const hands = { "1": "DIESTRO", "2": "ZURDO", "3": "AMBIDIESTRO" };
+            val = hands[String(emp.dominantHand)] || '-';
+          } else if (col.key === 'birthPlace') {
+            val = emp.birthPlace || '-';
+          } else if (col.key === 'homeAddress') {
+            val = emp.homeAddress || '-';
+          } else if (col.key === 'educationLevel') {
+            const levels = {
+              "primaria": "PRIMARIA", "bachiller": "BACHILLERATO", "tecnico_medio": "TÉCNICO MEDIO",
+              "tsu": "T.S.U.", "universitario": "UNIVERSITARIO", "especializacion": "POSTGRADO",
+              "maestria": "MAESTRÍA", "doctorado": "DOCTORADO"
+            };
+            val = levels[String(emp.educationLevel).toLowerCase()] || emp.educationLevel || '-';
+          } else if (col.key === 'hireDate') {
+            val = emp.hireDate || '-';
+          } else if (col.key === 'officePhone') {
+            val = emp.officePhone || '-';
+          }
+          
+          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
+          const valStr = String(val);
+          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
+
+          doc.text(truncated, col.x + 5, rowY + 5, { width: col.width - 8, lineBreak: false });
+        });
 
         doc.y += rowHeight;
         isEven = !isEven;
@@ -539,7 +613,7 @@ class PdfGenerator {
   /**
    * 4. GENERATE LIST OF ALL ACCIDENTS REPORT PDF
    */
-  static generateAccidentsListPdf(accidents) {
+  static generateAccidentsListPdf(accidents, columns) {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
       const chunks = [];
@@ -551,6 +625,47 @@ class PdfGenerator {
       const title = 'Listado General de Accidentes ASHO';
       doc.currentTitle = title;
       this.drawHeader(doc, title);
+
+      // Define all possible columns and weights
+      const allCols = [
+        { key: 'accidentControlNumber', label: 'CÓDIGO/CONTROL', weight: 110 },
+        { key: 'accidentDate', label: 'FECHA', weight: 60 },
+        { key: 'accidentTime', label: 'HORA', weight: 50 },
+        { key: 'accidentType', label: 'TIPO ACCIDENTE', weight: 110 },
+        { key: 'facility', label: 'INSTALACIÓN / DIRECCIÓN', weight: 120 },
+        { key: 'management', label: 'GERENCIA RESPONSABLE', weight: 120 },
+        { key: 'status', label: 'ESTATUS', weight: 60 },
+        { key: 'description', label: 'DESCRIPCIÓN', weight: 140 },
+        { key: 'medicalCenterName', label: 'CENTRO MÉDICO', weight: 120 },
+        { key: 'medicalObservations', label: 'OBS. MÉDICAS', weight: 120 },
+        { key: 'globalObservations', label: 'OBS. GLOBALES', weight: 120 }
+      ];
+
+      // Filter based on user selection
+      let selectedCols = allCols;
+      if (columns && Array.isArray(columns) && columns.length > 0) {
+        selectedCols = allCols.filter(c => columns.includes(c.key));
+      }
+      if (selectedCols.length === 0) selectedCols = allCols;
+
+      // Calculate layout coordinates
+      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
+      const printableWidth = doc.page.width - 100;
+      let currentX = 50;
+      selectedCols.forEach(c => {
+        c.width = (c.weight / totalWeight) * printableWidth;
+        c.x = currentX;
+        currentX += c.width;
+      });
+
+      // Helper to draw headers
+      const drawTableHeaders = (y) => {
+        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+        selectedCols.forEach(col => {
+          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
+        });
+      };
 
       // Stats block
       const statsY = doc.y;
@@ -564,14 +679,7 @@ class PdfGenerator {
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-      doc.text('CÓDIGO/CONTROL', 55, startY + 5);
-      doc.text('FECHA', 170, startY + 5);
-      doc.text('TIPO ACCIDENTE', 230, startY + 5);
-      doc.text('INSTALACIÓN / DIRECCIÓN', 350, startY + 5);
-      doc.text('ESTATUS', 485, startY + 5);
-
+      drawTableHeaders(startY);
       doc.y = startY + 18;
 
       let isEven = false;
@@ -581,13 +689,7 @@ class PdfGenerator {
           this.drawHeader(doc, title);
           
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-          doc.text('CÓDIGO/CONTROL', 55, pageStartY + 5);
-          doc.text('FECHA', 170, pageStartY + 5);
-          doc.text('TIPO ACCIDENTE', 230, pageStartY + 5);
-          doc.text('INSTALACIÓN / DIRECCIÓN', 350, pageStartY + 5);
-          doc.text('ESTATUS', 485, pageStartY + 5);
+          drawTableHeaders(pageStartY);
           doc.y = pageStartY + 18;
         }
 
@@ -598,22 +700,51 @@ class PdfGenerator {
         }
         doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
         
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
-        const code = acc.accidentControlNumber || acc.accident_control_number || acc.inpsaselFileNumber || `ID: ${acc.id}`;
-        doc.text(code.substring(0, 24), 55, rowY + 6);
-        
-        const dateStr = acc.accidentDate ? new Date(acc.accidentDate).toLocaleDateString('es-ES') : '-';
-        doc.font('Helvetica').fontSize(7.5).fillColor('#444444');
-        doc.text(dateStr, 170, rowY + 6);
-        
-        const typeStr = acc.type ? acc.type.name : '-';
-        doc.text(typeStr.substring(0, 24), 230, rowY + 6);
-        
-        const instStr = acc.facility ? acc.facility.name : '-';
-        doc.text(instStr.substring(0, 28), 350, rowY + 6);
-        
-        doc.font('Helvetica-Bold').fillColor('#E30613');
-        doc.text(acc.processStatus ? acc.processStatus.name : 'REGISTRADO', 485, rowY + 6);
+        selectedCols.forEach(col => {
+          let val = '';
+          let isStatus = false;
+          let isBold = false;
+          if (col.key === 'accidentControlNumber') {
+            val = acc.accidentControlNumber || acc.accident_control_number || acc.inpsaselFileNumber || `ID: ${acc.id}`;
+            isBold = true;
+          } else if (col.key === 'accidentDate') {
+            val = acc.accidentDate ? new Date(acc.accidentDate).toLocaleDateString('es-ES') : '-';
+          } else if (col.key === 'accidentTime') {
+            val = acc.accidentTime || acc.accident_time || '-';
+          } else if (col.key === 'accidentType') {
+            val = acc.type ? acc.type.name : '-';
+          } else if (col.key === 'facility') {
+            val = acc.facility ? acc.facility.name : '-';
+          } else if (col.key === 'management') {
+            val = acc.management ? acc.management.name : '-';
+          } else if (col.key === 'status') {
+            val = acc.processStatus ? acc.processStatus.name : 'REGISTRADO';
+            isStatus = true;
+            isBold = true;
+          } else if (col.key === 'description') {
+            val = acc.description || '-';
+          } else if (col.key === 'medicalCenterName') {
+            val = acc.medicalCenterName || '-';
+          } else if (col.key === 'medicalObservations') {
+            val = acc.medicalObservations || '-';
+          } else if (col.key === 'globalObservations') {
+            val = acc.globalObservations || '-';
+          }
+
+          if (isStatus) {
+            doc.font('Helvetica-Bold').fillColor('#E30613');
+          } else if (isBold) {
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+          } else {
+            doc.font('Helvetica').fontSize(7.5).fillColor('#444444');
+          }
+
+          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
+          const valStr = String(val);
+          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
+
+          doc.text(truncated, col.x + 5, rowY + 6, { width: col.width - 8, lineBreak: false });
+        });
 
         doc.y += rowHeight;
         isEven = !isEven;
@@ -627,7 +758,7 @@ class PdfGenerator {
   /**
    * 5. GENERATE LIST OF ALL INSPECTIONS REPORT PDF
    */
-  static generateInspectionsListPdf(inspections) {
+  static generateInspectionsListPdf(inspections, columns) {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
       const chunks = [];
@@ -639,6 +770,44 @@ class PdfGenerator {
       const title = 'Listado General de Inspecciones ASHO';
       doc.currentTitle = title;
       this.drawHeader(doc, title);
+
+      // Define all possible columns and weights
+      const allCols = [
+        { key: 'inspectionNumber', label: 'CÓDIGO/INSP.', weight: 110 },
+        { key: 'date', label: 'FECHA', weight: 60 },
+        { key: 'facility', label: 'INSTALACIÓN EVALUADA', weight: 130 },
+        { key: 'inspector', label: 'INSPECTOR RESPONSABLE', weight: 120 },
+        { key: 'typeStatus', label: 'TIPO INSPECCIÓN', weight: 90 },
+        { key: 'status', label: 'ESTATUS EVALUACIÓN', weight: 90 },
+        { key: 'coordinates', label: 'COORDENADAS', weight: 90 },
+        { key: 'observations', label: 'OBSERVACIONES', weight: 140 }
+      ];
+
+      // Filter based on user selection
+      let selectedCols = allCols;
+      if (columns && Array.isArray(columns) && columns.length > 0) {
+        selectedCols = allCols.filter(c => columns.includes(c.key));
+      }
+      if (selectedCols.length === 0) selectedCols = allCols;
+
+      // Calculate layout coordinates
+      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
+      const printableWidth = doc.page.width - 100;
+      let currentX = 50;
+      selectedCols.forEach(c => {
+        c.width = (c.weight / totalWeight) * printableWidth;
+        c.x = currentX;
+        currentX += c.width;
+      });
+
+      // Helper to draw headers
+      const drawTableHeaders = (y) => {
+        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
+        selectedCols.forEach(col => {
+          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
+        });
+      };
 
       // Stats block
       const statsY = doc.y;
@@ -652,14 +821,7 @@ class PdfGenerator {
 
       // Table Headers
       const startY = doc.y;
-      doc.rect(50, startY, doc.page.width - 100, 18).fill('#005C9E');
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-      doc.text('CÓDIGO/INSP.', 55, startY + 5);
-      doc.text('FECHA', 160, startY + 5);
-      doc.text('INSTALACIÓN EVALUADA', 220, startY + 5);
-      doc.text('INSPECTOR RESPONSABLE', 360, startY + 5);
-      doc.text('TIPO / ESTATUS', 485, startY + 5);
-
+      drawTableHeaders(startY);
       doc.y = startY + 18;
 
       let isEven = false;
@@ -669,13 +831,7 @@ class PdfGenerator {
           this.drawHeader(doc, title);
           
           const pageStartY = doc.y;
-          doc.rect(50, pageStartY, doc.page.width - 100, 18).fill('#005C9E');
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-          doc.text('CÓDIGO/INSP.', 55, pageStartY + 5);
-          doc.text('FECHA', 160, pageStartY + 5);
-          doc.text('INSTALACIÓN EVALUADA', 220, pageStartY + 5);
-          doc.text('INSPECTOR RESPONSABLE', 360, pageStartY + 5);
-          doc.text('TIPO / ESTATUS', 485, pageStartY + 5);
+          drawTableHeaders(pageStartY);
           doc.y = pageStartY + 18;
         }
 
@@ -686,25 +842,54 @@ class PdfGenerator {
         }
         doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
         
-        doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-        doc.text(insp.inspectionNumber || `ID: ${insp.id}`, 55, rowY + 6);
-        
-        const dateStr = insp.date ? new Date(insp.date).toLocaleDateString('es-ES') : '-';
-        doc.text(dateStr, 160, rowY + 6);
-        
-        const instStr = insp.facility ? insp.facility.name : '-';
-        doc.text(instStr.substring(0, 25), 220, rowY + 6);
-        
-        const inspName = insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-';
-        doc.text(inspName.substring(0, 25), 360, rowY + 6);
-        
-        let typeStr = 'General';
-        if (insp.extinguisherInspection) typeStr = 'Extintores';
-        else if (insp.vehicleInspection) typeStr = 'Vehicular';
-        else if (insp.protectionInspection) typeStr = 'Protección';
-        
-        doc.font('Helvetica-Bold').fillColor('#005C9E');
-        doc.text(`${typeStr}`, 485, rowY + 6);
+        selectedCols.forEach(col => {
+          let val = '';
+          let isColor = false;
+          let colorHex = '#333333';
+          let isBold = false;
+
+          if (col.key === 'inspectionNumber') {
+            val = insp.inspectionNumber || `ID: ${insp.id}`;
+          } else if (col.key === 'date') {
+            val = insp.date ? new Date(insp.date).toLocaleDateString('es-ES') : '-';
+          } else if (col.key === 'facility') {
+            val = insp.facility ? insp.facility.name : '-';
+          } else if (col.key === 'inspector') {
+            val = insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-';
+          } else if (col.key === 'typeStatus') {
+            let typeStr = 'General';
+            if (insp.extinguisherInspection) typeStr = 'Extintores';
+            else if (insp.vehicleInspection) typeStr = 'Vehicular';
+            else if (insp.protectionInspection) typeStr = 'Protección';
+            val = typeStr;
+            isColor = true;
+            colorHex = '#005C9E';
+            isBold = true;
+          } else if (col.key === 'status') {
+            val = insp.status ? insp.status.name : 'EN PROCESO';
+            isColor = true;
+            colorHex = insp.statusId === 3 ? '#10B981' : insp.statusId === 2 ? '#F59E0B' : '#6B7280';
+            isBold = true;
+          } else if (col.key === 'coordinates') {
+            val = insp.coordinates || '-';
+          } else if (col.key === 'observations') {
+            val = insp.observations || '-';
+          }
+
+          if (isColor) {
+            doc.font('Helvetica-Bold').fillColor(colorHex);
+          } else if (isBold) {
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+          } else {
+            doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+          }
+
+          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
+          const valStr = String(val);
+          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
+
+          doc.text(truncated, col.x + 5, rowY + 6, { width: col.width - 8, lineBreak: false });
+        });
 
         doc.y += rowHeight;
         isEven = !isEven;

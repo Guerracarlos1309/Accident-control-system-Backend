@@ -7,6 +7,12 @@ const { protect } = require('../middlewares/authMiddleware');
 router.use(protect);
 
 /**
+ * @route   GET /api/accidents/next-correlative
+ * @desc    Get the next available correlative sequence number for a year
+ */
+router.get('/next-correlative', accidentController.getNextCorrelative);
+
+/**
  * @route   GET /api/accidents
  * @desc    Get all accidents
  */

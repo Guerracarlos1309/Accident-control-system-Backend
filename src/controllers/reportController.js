@@ -58,7 +58,8 @@ exports.downloadPayrollReport = async (req, res, next) => {
       order: [["lastName", "ASC"], ["firstName", "ASC"]]
     });
 
-    const pdfBuffer = await PdfGenerator.generatePayrollPdf(employees);
+    const columns = req.query.columns ? req.query.columns.split(",") : null;
+    const pdfBuffer = await PdfGenerator.generatePayrollPdf(employees, columns);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=nomina_personal.pdf");
@@ -250,7 +251,8 @@ exports.downloadAccidentsListReport = async (req, res, next) => {
       order: [["id", "DESC"]],
     });
 
-    const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents);
+    const columns = req.query.columns ? req.query.columns.split(",") : null;
+    const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents, columns);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=listado_accidentes.pdf");
@@ -282,7 +284,8 @@ exports.downloadInspectionsListReport = async (req, res, next) => {
       order: [["created_at", "DESC"]],
     });
 
-    const pdfBuffer = await PdfGenerator.generateInspectionsListPdf(inspections);
+    const columns = req.query.columns ? req.query.columns.split(",") : null;
+    const pdfBuffer = await PdfGenerator.generateInspectionsListPdf(inspections, columns);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=listado_inspecciones.pdf");
@@ -336,7 +339,14 @@ exports.downloadCustomReport = async (req, res, next) => {
           whereClause.accidentDate = dateFilter;
         }
         if (managementId) {
-          whereClause.managementId = managementId;
+          whereClause[Op.or] = [
+            { managementId: managementId },
+            sequelize.literal(`EXISTS (
+              SELECT 1 FROM employee_accident AS ea
+              INNER JOIN employee AS e ON ea.employee_id = e.personal_number
+              WHERE ea.accident_id = Accident.id AND e.management_id = ${parseInt(managementId)}
+            )`)
+          ];
         }
         if (accidentTypeId) {
           whereClause.accidentTypeId = accidentTypeId;
@@ -366,7 +376,8 @@ exports.downloadCustomReport = async (req, res, next) => {
         return res.json(accidents);
       }
 
-      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents);
+      const columns = req.query.columns ? req.query.columns.split(",") : null;
+      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents, columns);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_accidentes.pdf");
       return res.send(pdfBuffer);
@@ -423,7 +434,8 @@ exports.downloadCustomReport = async (req, res, next) => {
         return res.json(inspections);
       }
 
-      const pdfBuffer = await PdfGenerator.generateInspectionsListPdf(inspections);
+      const columns = req.query.columns ? req.query.columns.split(",") : null;
+      const pdfBuffer = await PdfGenerator.generateInspectionsListPdf(inspections, columns);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_inspecciones.pdf");
       return res.send(pdfBuffer);
