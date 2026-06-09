@@ -57,6 +57,42 @@ app.get("/api/health", (req, res) => {
     .json({ status: "OK", message: "Accident Control System API is running" });
 });
 
+// Admin Backup Route
+const { protect, authorize } = require("./middlewares/authMiddleware");
+const fs = require("fs");
+
+app.get("/api/admin/backup-database", protect, authorize("Administrador"), (req, res) => {
+  try {
+    const dbPath = path.resolve(process.env.DB_STORAGE || "./database.sqlite");
+    if (!fs.existsSync(dbPath)) {
+      return res.status(404).json({ message: "Base de datos no encontrada" });
+    }
+    const backupFilename = `backup_sistema_${new Date().toISOString().slice(0, 10)}.sqlite`;
+    const tempBackupPath = path.resolve(`./temp_${backupFilename}`);
+    
+    // Copiar el archivo para evitar bloqueos
+    fs.copyFileSync(dbPath, tempBackupPath);
+    
+    res.download(tempBackupPath, backupFilename, (err) => {
+      // Eliminar el archivo temporal después de la descarga
+      try {
+        if (fs.existsSync(tempBackupPath)) {
+          fs.unlinkSync(tempBackupPath);
+        }
+      } catch (unlinkErr) {
+        console.error("Error al eliminar backup temporal:", unlinkErr);
+      }
+      
+      if (err && !res.headersSent) {
+        res.status(500).json({ message: "Error al descargar el respaldo" });
+      }
+    });
+  } catch (error) {
+    console.error("Error al generar backup:", error);
+    res.status(500).json({ message: "Error al generar el respaldo de la base de datos" });
+  }
+});
+
 // Temporary Sync Route (Remove after use)
 app.get("/api/sync-database", async (req, res) => {
   try {
