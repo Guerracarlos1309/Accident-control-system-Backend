@@ -7,11 +7,20 @@ const { Op } = require("sequelize");
 exports.getAllEmployees = async (req, res, next) => {
   try {
     const { status } = req.query;
-    // Default to active (1) if no status provided
-    const statusFilter = status !== undefined ? parseInt(status) : 1;
+
+    let whereClause;
+
+    if (status === undefined) {
+      // No filter → show all "active-state" employees (1=Activo, 2=Inactivo temporal,
+      // 3=Vacaciones, 4=Reposo Médico, 5=Suspendido). Only exclude retired (status 0).
+      whereClause = { status: { [Op.ne]: 0 } };
+    } else {
+      // Explicit filter (e.g. ?status=0 for the inactive/historic panel)
+      whereClause = { status: parseInt(status) };
+    }
 
     const employees = await Employee.findAll({
-      where: { status: statusFilter },
+      where: whereClause,
       include: [
 
         { model: JobTitle, as: "jobTitle" },
