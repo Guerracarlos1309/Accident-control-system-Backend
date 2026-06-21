@@ -88,8 +88,7 @@ exports.downloadAccidentReport = async (req, res, next) => {
         },
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
-        { model: DamageAgent, as: "damageAgent" },
-        { model: ContactType, as: "contactType" },
+        { model: Magnitude, as: "magnitude" },
         { model: Management, as: "management" },
         { model: InspectionStatus, as: "processStatus" },
         {

@@ -2,6 +2,20 @@ const PDFDocument = require('pdfkit');
 const path = require('path');
 
 class PdfGenerator {
+  static formatDate(dateStr) {
+    if (!dateStr) return '-';
+    if (dateStr instanceof Date) {
+      return dateStr.toLocaleDateString('es-ES');
+    }
+    const cleanStr = typeof dateStr === 'string' ? dateStr.split('T')[0] : '';
+    const parts = cleanStr.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}/${month}/${year}`;
+    }
+    return new Date(dateStr).toLocaleDateString('es-ES');
+  }
+
   /**
    * Helper to draw a beautiful, standardized header on each page
    */
@@ -35,13 +49,14 @@ class PdfGenerator {
     doc.y = 115;
   }
 
-  /**
-   * Helper to draw a sleek footer on all pages
-   */
   static drawFooter(doc) {
     const pageCount = doc.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
       doc.switchToPage(i);
+      
+      // Save and temporarily disable the bottom margin to prevent PDFKit auto-page breaks in footer
+      const oldBottom = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
       
       // Footer line
       doc.moveTo(50, doc.page.height - 45).lineTo(doc.page.width - 50, doc.page.height - 45).lineWidth(0.5).strokeColor('#DCDCDC').stroke();
@@ -50,6 +65,9 @@ class PdfGenerator {
       doc.font('Helvetica').fontSize(6.5).fillColor('#888888');
       doc.text('Documento generado automáticamente por el Sistema de Control de Accidentes y Gestión ASHO.', 50, doc.page.height - 36);
       doc.text(`Página ${i + 1} de ${pageCount}`, doc.page.width - 150, doc.page.height - 36, { align: 'right' });
+
+      // Restore the original bottom margin
+      doc.page.margins.bottom = oldBottom;
     }
   }
 
@@ -127,24 +145,7 @@ class PdfGenerator {
       }
       if (selectedCols.length === 0) selectedCols = allCols;
 
-      // Calculate layout coordinates
-      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
-      const printableWidth = doc.page.width - 100;
-      let currentX = 50;
-      selectedCols.forEach(c => {
-        c.width = (c.weight / totalWeight) * printableWidth;
-        c.x = currentX;
-        currentX += c.width;
-      });
-
-      // Helper to draw headers
-      const drawTableHeaders = (y) => {
-        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        selectedCols.forEach(col => {
-          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
-        });
-      };
+      const isSelected = (key) => selectedCols.some(c => c.key === key);
 
       // Summary block
       const summaryY = doc.y;
@@ -156,85 +157,90 @@ class PdfGenerator {
       
       doc.y = summaryY + 45;
 
-      // Table Headers
-      const startY = doc.y;
-      drawTableHeaders(startY);
-      doc.y = startY + 18;
-
-      let isEven = false;
       employees.forEach((emp) => {
-        if (doc.y > doc.page.height - 65) {
+        const cardFields = [];
+        
+        if (isSelected('management')) cardFields.push({ label: 'Gerencia:', value: emp.management ? emp.management.name : '-' });
+        if (isSelected('jobTitle')) cardFields.push({ label: 'Cargo:', value: emp.jobTitle ? emp.jobTitle.name : '-' });
+        if (isSelected('occupation')) cardFields.push({ label: 'Ocupación:', value: emp.occupation ? emp.occupation.name : '-' });
+        if (isSelected('phone')) cardFields.push({ label: 'Teléfono:', value: emp.phone || '-' });
+        if (isSelected('gender')) {
+          const genderStr = emp.gender === 'M' ? 'MASCULINO' : emp.gender === 'F' ? 'FEMENINO' : 'OTRO';
+          cardFields.push({ label: 'Género:', value: genderStr });
+        }
+        if (isSelected('birthDate')) cardFields.push({ label: 'Fec. Nac.:', value: this.formatDate(emp.birthDate) });
+        if (isSelected('email')) cardFields.push({ label: 'Correo:', value: emp.email || '-' });
+        if (isSelected('maritalStatus')) {
+          const statuses = { "1": "SOLTERO/A", "2": "CASADO/A", "3": "DIVORCIADO/A", "4": "VIUDO/A", "5": "CONCUBINATO" };
+          cardFields.push({ label: 'Edo. Civil:', value: statuses[String(emp.maritalStatus)] || '-' });
+        }
+        if (isSelected('dominantHand')) {
+          const hands = { "1": "DIESTRO", "2": "ZURDO", "3": "AMBIDIESTRO" };
+          cardFields.push({ label: 'Lateralidad:', value: hands[String(emp.dominantHand)] || '-' });
+        }
+        if (isSelected('educationLevel')) {
+          const levels = {
+            "primaria": "PRIMARIA", "bachiller": "BACHILLERATO", "tecnico_medio": "TÉCNICO MEDIO",
+            "tsu": "T.S.U.", "universitario": "UNIVERSITARIO", "especializacion": "POSTGRADO",
+            "maestria": "MAESTRÍA", "doctorado": "DOCTORADO"
+          };
+          cardFields.push({ label: 'Niv. Educativo:', value: levels[String(emp.educationLevel).toLowerCase()] || emp.educationLevel || '-' });
+        }
+        if (isSelected('hireDate')) cardFields.push({ label: 'Fec. Ingreso:', value: this.formatDate(emp.hireDate) });
+        if (isSelected('officePhone')) cardFields.push({ label: 'Tel. Oficina:', value: emp.officePhone || '-' });
+        if (isSelected('birthPlace')) cardFields.push({ label: 'Lugar Nac.:', value: emp.birthPlace || '-', fullWidth: true });
+        if (isSelected('homeAddress')) cardFields.push({ label: 'Dirección:', value: emp.homeAddress || '-', fullWidth: true });
+
+        const standardFields = cardFields.filter(f => !f.fullWidth);
+        const fullWidthFields = cardFields.filter(f => f.fullWidth);
+
+        const numRows = Math.ceil(standardFields.length / 2);
+        const bodyHeight = (numRows * 13) + (fullWidthFields.length * 15) + 10;
+        const cardHeight = 22 + bodyHeight;
+
+        if (doc.y + cardHeight + 15 > doc.page.height - 65) {
           doc.addPage();
           this.drawHeader(doc, title);
-          
-          const pageStartY = doc.y;
-          drawTableHeaders(pageStartY);
-          doc.y = pageStartY + 18;
         }
 
-        const rowHeight = 18;
         const rowY = doc.y;
-        if (isEven) {
-          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
-        }
-        
-        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#EAEAEA');
+        // Bounding box for the employee card
+        doc.rect(50, rowY, 495, cardHeight).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
 
-        doc.font('Helvetica').fontSize(7.5).fillColor('#222222');
-        selectedCols.forEach(col => {
-          let val = '';
-          if (col.key === 'personalNumber') {
-            val = emp.personalNumber || '-';
-          } else if (col.key === 'idCard') {
-            val = emp.idCard || '-';
-          } else if (col.key === 'fullName') {
-            val = `${emp.lastName || ''}, ${emp.firstName || ''}`.trim() || '-';
-          } else if (col.key === 'management') {
-            val = emp.management ? emp.management.name : '-';
-          } else if (col.key === 'jobTitle') {
-            val = emp.jobTitle ? emp.jobTitle.name : '-';
-          } else if (col.key === 'occupation') {
-            val = emp.occupation ? emp.occupation.name : '-';
-          } else if (col.key === 'phone') {
-            val = emp.phone || '-';
-          } else if (col.key === 'gender') {
-            val = emp.gender === 'M' ? 'MASCULINO' : emp.gender === 'F' ? 'FEMENINO' : 'OTRO';
-          } else if (col.key === 'birthDate') {
-            val = emp.birthDate || '-';
-          } else if (col.key === 'email') {
-            val = emp.email || '-';
-          } else if (col.key === 'maritalStatus') {
-            const statuses = { "1": "SOLTERO/A", "2": "CASADO/A", "3": "DIVORCIADO/A", "4": "VIUDO/A", "5": "CONCUBINATO" };
-            val = statuses[String(emp.maritalStatus)] || '-';
-          } else if (col.key === 'dominantHand') {
-            const hands = { "1": "DIESTRO", "2": "ZURDO", "3": "AMBIDIESTRO" };
-            val = hands[String(emp.dominantHand)] || '-';
-          } else if (col.key === 'birthPlace') {
-            val = emp.birthPlace || '-';
-          } else if (col.key === 'homeAddress') {
-            val = emp.homeAddress || '-';
-          } else if (col.key === 'educationLevel') {
-            const levels = {
-              "primaria": "PRIMARIA", "bachiller": "BACHILLERATO", "tecnico_medio": "TÉCNICO MEDIO",
-              "tsu": "T.S.U.", "universitario": "UNIVERSITARIO", "especializacion": "POSTGRADO",
-              "maestria": "MAESTRÍA", "doctorado": "DOCTORADO"
-            };
-            val = levels[String(emp.educationLevel).toLowerCase()] || emp.educationLevel || '-';
-          } else if (col.key === 'hireDate') {
-            val = emp.hireDate || '-';
-          } else if (col.key === 'officePhone') {
-            val = emp.officePhone || '-';
-          }
+        // Header bar inside card
+        doc.rect(50, rowY, 495, 20).fill('#F2F5F8');
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#005C9E');
+        const nameStr = `${emp.lastName || ''}, ${emp.firstName || ''}`.trim() || 'Trabajador';
+        doc.text(nameStr.toUpperCase(), 55, rowY + 6);
+
+        // Header details (Ficha / Cédula)
+        let headerRight = '';
+        if (isSelected('personalNumber')) headerRight += `FICHA: ${emp.personalNumber || '-'}   `;
+        if (isSelected('idCard')) headerRight += `C.I.: ${emp.idCard || '-'}`;
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+        doc.text(headerRight.trim(), 300, rowY + 6, { width: 240, align: 'right' });
+
+        const y_body = rowY + 25;
+        // Two-column layout for standard fields
+        standardFields.forEach((field, fIdx) => {
+          const colIdx = fIdx % 2;
+          const rowIdx = Math.floor(fIdx / 2);
+          const x = colIdx === 0 ? 55 : 300;
+          const y = y_body + (rowIdx * 13);
           
-          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
-          const valStr = String(val);
-          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
-
-          doc.text(truncated, col.x + 5, rowY + 5, { width: col.width - 8, lineBreak: false });
+          doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(field.label, x, y);
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333').text(String(field.value), x + 70, y, { width: 165, lineBreak: false });
         });
 
-        doc.y += rowHeight;
-        isEven = !isEven;
+        // Full width fields at the bottom
+        const y_full = y_body + (numRows * 13) + 5;
+        fullWidthFields.forEach((field, fIdx) => {
+          const y = y_full + (fIdx * 15);
+          doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(field.label, 55, y);
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333').text(String(field.value), 125, y, { width: 410 });
+        });
+
+        doc.y = rowY + cardHeight + 12;
       });
 
       this.drawFooter(doc);
@@ -262,7 +268,7 @@ class PdfGenerator {
       this.drawSectionHeader(doc, 'Información del Suceso');
       const startY = doc.y;
       
-      const dateFormatted = accident.accidentDate ? new Date(accident.accidentDate).toLocaleDateString('es-ES') : '-';
+      const dateFormatted = this.formatDate(accident.accidentDate);
       const facilityStr = accident.facility ? `${accident.facility.name} (${accident.facility.location ? accident.facility.location.name : ''})` : '-';
       
       this.drawDataRow(doc, 'Nro. Control:', accident.accidentControlNumber || accident.accident_control_number, 50, startY);
@@ -271,9 +277,16 @@ class PdfGenerator {
       this.drawDataRow(doc, 'Instalación:', facilityStr, 50, startY + 42, 250);
       this.drawDataRow(doc, 'Gerencia:', accident.management ? accident.management.name : '-', 50, startY + 56, 250);
 
+      const workTypeStr = accident.workType === 'ordinario'
+        ? 'Ordinario'
+        : accident.workType === 'eventual'
+          ? 'Eventual u ocasional'
+          : accident.workType || '-';
+      const magnitudeStr = accident.magnitude ? (accident.magnitude.name || accident.magnitude.description) : '-';
+
       this.drawDataRow(doc, 'Tipo Incidente:', accident.type ? accident.type.name : '-', 315, startY, 230);
-      this.drawDataRow(doc, 'Agente Daño:', accident.damageAgent ? accident.damageAgent.name : '-', 315, startY + 14, 230);
-      this.drawDataRow(doc, 'Tipo Contacto:', accident.contactType ? accident.contactType.name : '-', 315, startY + 28, 230);
+      this.drawDataRow(doc, 'Magnitud:', magnitudeStr, 315, startY + 14, 230);
+      this.drawDataRow(doc, 'Tipo Trabajo:', workTypeStr, 315, startY + 28, 230);
       this.drawDataRow(doc, 'Estatus:', accident.processStatus ? accident.processStatus.name : '-', 315, startY + 42, 230);
       this.drawDataRow(doc, 'Año / Periodo:', accident.period ? String(accident.period.annuality) : '-', 315, startY + 56, 230);
 
@@ -295,14 +308,18 @@ class PdfGenerator {
         doc.font('Helvetica-Oblique').fontSize(8).fillColor('#666666').text('No se registraron lesionados.', 50, doc.y);
         doc.y += 14;
       } else {
+        // Column X positions (printable area: x=50 to x=545)
+        // Name: 50-195 (145px) | Mgt: 200-320 (120px) | Injury: 325-410 (85px) | Level: 415-500 (85px) | Days: 505-545 (40px)
+        const COL = { name: 55, mgt: 200, injury: 325, level: 415, days: 505 };
+
         const tableStartY = doc.y;
         doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('IDENTIFICACIÓN Y NOMBRES', 55, tableStartY + 4);
-        doc.text('GERENCIA / OCUPACIÓN', 215, tableStartY + 4);
-        doc.text('TIPO DE LESIÓN', 345, tableStartY + 4);
-        doc.text('NIVEL / CONSECUENCIA', 455, tableStartY + 4);
-        doc.text('DÍAS', 525, tableStartY + 4);
+        doc.text('IDENTIFICACIÓN Y NOMBRES', COL.name, tableStartY + 4, { width: 140 });
+        doc.text('GERENCIA / OCUPACIÓN',     COL.mgt,   tableStartY + 4, { width: 115 });
+        doc.text('TIPO DE LESIÓN',           COL.injury, tableStartY + 4, { width: 80 });
+        doc.text('NIVEL / CONSECUENCIA',     COL.level, tableStartY + 4, { width: 80 });
+        doc.text('DÍAS',                     COL.days,  tableStartY + 4, { width: 38, align: 'center' });
 
         doc.y = tableStartY + 16;
         employees.forEach((ie, idx) => {
@@ -318,32 +335,38 @@ class PdfGenerator {
           }
           doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
           
+          // Nombre completo
           doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#222222');
-          const name = ie.employee ? `${ie.employee.lastName}, ${ie.employee.firstName}`.substring(0, 30) : '-';
-          doc.text(name, 55, rowY + 5);
+          const name = ie.employee ? `${ie.employee.lastName}, ${ie.employee.firstName}` : '-';
+          doc.text(name.substring(0, 28), COL.name, rowY + 5, { width: 140 });
           doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
-          doc.text(`CI: ${ie.employee?.idCard || ie.employeePersonalNumber}`, 55, rowY + 14);
+          doc.text(`CI: ${ie.employee?.idCard || ie.employeePersonalNumber || 'N/E'}`, COL.name, rowY + 14, { width: 140 });
           
+          // Gerencia / Ocupación
           const mgt = ie.employee?.management ? ie.employee.management.name : '-';
           const occ = ie.employee?.occupation ? ie.employee.occupation.name : '-';
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-          doc.text(mgt.substring(0, 24), 215, rowY + 5);
+          doc.text(mgt.substring(0, 22), COL.mgt, rowY + 5, { width: 115 });
           doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
-          doc.text(occ.substring(0, 24), 215, rowY + 14);
+          doc.text(occ.substring(0, 22), COL.mgt, rowY + 14, { width: 115 });
           
+          // Tipo de lesión
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-          doc.text(ie.injuryType ? ie.injuryType.name.substring(0, 24) : '-', 345, rowY + 5);
+          doc.text(ie.injuryType ? ie.injuryType.name.substring(0, 18) : '-', COL.injury, rowY + 5, { width: 80 });
           doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
-          doc.text(`Parte: ${ie.affectedArea || 'N/E'} / Nat: ${ie.injuryNature || 'N/E'}`, 345, rowY + 14);
+          doc.text(`Pte: ${ie.affectedArea || 'N/E'} / Nat: ${ie.injuryNature || 'N/E'}`, COL.injury, rowY + 14, { width: 80 });
 
+          // Nivel / Consecuencia
           const lvl = ie.injuryLevel === '1' ? 'LEVE' : ie.injuryLevel === '2' ? 'MODERADO' : ie.injuryLevel === '3' ? 'GRAVE' : ie.injuryLevel === '4' ? 'FATAL' : 'S/L';
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-          doc.text(`NIVEL: ${lvl}`, 455, rowY + 5);
+          doc.text(`NIVEL: ${lvl}`, COL.level, rowY + 5, { width: 80 });
           doc.font('Helvetica').fontSize(6.5).fillColor('#666666');
-          doc.text(`${ie.injuryConsequence || 'N/E'}`.substring(0, 16), 455, rowY + 14);
+          doc.text(`${ie.injuryConsequence || 'N/E'}`.substring(0, 14), COL.level, rowY + 14, { width: 80 });
 
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#E30613');
-          doc.text(ie.restDays ? String(ie.restDays) : '0', 525, rowY + 9);
+          // Días (centrado, limitado)
+          const dias = ie.restDays != null ? String(ie.restDays) : '0';
+          doc.font('Helvetica-Bold').fontSize(8).fillColor('#E30613');
+          doc.text(dias, COL.days, rowY + 9, { width: 38, align: 'center' });
 
           doc.y = rowY + rowHeight;
         });
@@ -424,7 +447,7 @@ class PdfGenerator {
       this.drawSectionHeader(doc, 'Generalidades');
       const startY = doc.y;
       
-      const dateFormatted = inspection.date ? new Date(inspection.date).toLocaleDateString('es-ES') : '-';
+      const dateFormatted = this.formatDate(inspection.date);
       const inspectorStr = inspection.inspector ? `${inspection.inspector.lastName}, ${inspection.inspector.firstName} (Ficha: ${inspection.inspector.personalNumber})` : '-';
       const facilityStr = inspection.facility ? `${inspection.facility.name} (${inspection.facility.location ? inspection.facility.location.name : ''})` : '-';
       
@@ -433,17 +456,22 @@ class PdfGenerator {
       this.drawDataRow(doc, 'Instalación:', facilityStr, 50, startY + 28, 250);
 
       this.drawDataRow(doc, 'Inspector:', inspectorStr, 315, startY, 230);
-      this.drawDataRow(doc, 'Estatus:', inspection.status ? inspection.status.name : 'REGISTRADO', 315, startY + 14, 230);
+      this.drawDataRow(doc, 'Estatus:', inspection.status ? inspection.status.name : 'REGISTRADO', 315, startY + 28, 230);
       
-      doc.y = startY + 46;
+      doc.y = startY + 56;
 
       // Section 2: Observations
       this.drawSectionHeader(doc, 'Diagnóstico y Observaciones de Campo');
-      doc.font('Helvetica').fontSize(8).fillColor('#222222').text(inspection.observations || 'Sin observaciones registradas.', 50, doc.y, {
-        width: doc.page.width - 100,
-        align: 'justify'
-      });
-      doc.y += 12;
+      const obsText = (inspection.observations || '').trim();
+      if (obsText) {
+        doc.font('Helvetica').fontSize(8).fillColor('#222222').text(obsText, 50, doc.y, {
+          width: doc.page.width - 100,
+          align: 'justify'
+        });
+        doc.y += 12;
+      } else {
+        doc.y += 4;
+      }
 
       // Section 3: Specialized Modules
       if (inspection.extinguisherInspection) {
@@ -454,45 +482,202 @@ class PdfGenerator {
         doc.font('Helvetica-Bold').fontSize(8).fillColor('#444444').text(`Detalles Ubicación:  ${extInsp.locationDetails || 'Instalación general'}`, 50, doc.y);
         doc.y += 14;
 
-        const tableStartY = doc.y;
-        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        doc.text('CÓDIGO / CAP.', 55, tableStartY + 4);
-        doc.text('AGENTE', 160, tableStartY + 4);
-        doc.text('PRESIÓN', 270, tableStartY + 4);
-        doc.text('MANGUERA / PRECINTO', 360, tableStartY + 4);
-        doc.text('APROBADO', 485, tableStartY + 4);
+        // Helpers for parsing detail observations
+        const parseGeneralObservations = (str) => {
+          const data = {
+            locationOk: true,
+            signageOk: true,
+            demarcationOk: true,
+            operationOk: true,
+            accessOk: true,
+            impulseType: 'DIRECTO',
+            physicalArea: 'No especificada',
+            observationsText: ''
+          };
+          
+          if (!str || !str.startsWith('CHECKLIST:')) {
+            data.observationsText = str || '';
+            return data;
+          }
 
-        doc.y = tableStartY + 16;
+          try {
+            const parts = str.split('. ');
+            const checklistPart = parts[0] || '';
+            const impulsePart = parts[1] || '';
+            const areaPart = parts[2] || '';
+            const obsPart = parts[3] || '';
+            
+            data.locationOk = checklistPart.includes('Ubicacion=OK');
+            data.signageOk = checklistPart.includes('Señalizacion=OK');
+            data.demarcationOk = checklistPart.includes('Demarcacion=OK');
+            data.accessOk = checklistPart.includes('Acceso=OK');
+            data.operationOk = checklistPart.includes('Funcionamiento=OK');
+            
+            if (impulsePart.includes('Impulsor: ')) {
+              data.impulseType = impulsePart.replace('Impulsor: ', '');
+            }
+            if (areaPart.includes('Area: ')) {
+              data.physicalArea = areaPart.replace('Area: ', '');
+            }
+            if (obsPart.includes('Observaciones: ')) {
+              data.observationsText = obsPart.replace('Observaciones: ', '');
+            }
+          } catch (e) {
+            data.observationsText = str;
+          }
+          return data;
+        };
+
+        const parseDetailObservations = (observationsStr, extinguisherNumber) => {
+          const data = {
+            code: `EXT-${String(extinguisherNumber).padStart(3, '0')}`,
+            physicalArea: 'No especificada',
+            impulseType: 'DIRECTO',
+            locationOk: true,
+            signageOk: true,
+            demarcationOk: true,
+            accessOk: true,
+            operationOk: true,
+            maintenancePart: '',
+            observationsText: ''
+          };
+
+          if (!observationsStr) return data;
+
+          if (!observationsStr.includes('|')) {
+            if (observationsStr.startsWith('Mantenimiento: ')) {
+              data.maintenancePart = observationsStr.replace('Mantenimiento: ', '').toUpperCase();
+            } else {
+              data.observationsText = observationsStr;
+            }
+            return data;
+          }
+
+          try {
+            const parts = observationsStr.split('|');
+            parts.forEach(part => {
+              const [key, value] = part.split(':');
+              if (!key || !value) return;
+              const cleanKey = key.trim();
+              const cleanValue = value.trim();
+
+              if (cleanKey === 'Code') data.code = cleanValue;
+              else if (cleanKey === 'Area') data.physicalArea = cleanValue;
+              else if (cleanKey === 'Imp') data.impulseType = cleanValue.toUpperCase();
+              else if (cleanKey === 'Obs') data.observationsText = cleanValue;
+              else if (cleanKey === 'Maint') data.maintenancePart = cleanValue.toUpperCase();
+              else if (cleanKey === 'CK') {
+                const checks = cleanValue.split(',');
+                if (checks.length === 5) {
+                  data.locationOk = checks[0] === '1';
+                  data.signageOk = checks[1] === '1';
+                  data.demarcationOk = checks[2] === '1';
+                  data.accessOk = checks[3] === '1';
+                  data.operationOk = checks[4] === '1';
+                }
+              }
+            });
+          } catch (err) {
+            console.error('Error parsing detail observations:', err);
+          }
+          return data;
+        };
+
+        const getExtinguisherData = (detail, extInsp) => {
+          if (detail && (!detail.observations || !detail.observations.includes('|'))) {
+            const parsed = parseGeneralObservations(extInsp.generalObservations);
+            return {
+              code: extInsp.extinguisherCode || `EXT-${String(detail.extinguisherNumber || 1).padStart(3, '0')}`,
+              physicalArea: parsed.physicalArea || 'No especificada',
+              impulseType: parsed.impulseType || 'DIRECTO',
+              locationOk: parsed.locationOk,
+              signageOk: parsed.signageOk,
+              demarcationOk: parsed.demarcationOk,
+              accessOk: parsed.accessOk,
+              operationOk: parsed.operationOk,
+              maintenancePart: detail.observations && detail.observations.startsWith('Mantenimiento: ') 
+                ? detail.observations.replace('Mantenimiento: ', '').toUpperCase() 
+                : '',
+              observationsText: parsed.observationsText || ''
+            };
+          }
+          return parseDetailObservations(detail ? detail.observations : '', detail ? detail.extinguisherNumber : 1);
+        };
+
         details.forEach((det, idx) => {
-          if (doc.y > doc.page.height - 65) {
+          const parsed = getExtinguisherData(det, extInsp);
+          
+          const cardHeight = 70 + (parsed.maintenancePart ? 10 : 0) + (parsed.observationsText ? 12 : 0);
+          const rectHeight = cardHeight + 8;
+          
+          if (doc.y + rectHeight > doc.page.height - 70) {
             doc.addPage();
             this.drawHeader(doc, title);
           }
           
           const rowY = doc.y;
-          const rowHeight = 18;
-          if (idx % 2 === 1) {
-            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
+          // Card outer boundary box
+          doc.rect(50, rowY, 495, rectHeight).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+          
+          // Header info inside the card
+          doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#005C9E').text(parsed.code, 55, rowY + 5);
+          const capacityStr = `${det.agentType ? det.agentType.name : 'Extintor'} - ${det.capacity || '10 Lb'}`;
+          doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(`(${capacityStr})`, 130, rowY + 6.5);
+          
+          // Status/Operatividad badge on the right
+          const approved = det.generalStatus === 'OPERATIVO';
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor(approved ? 'green' : 'orange');
+          doc.text(`OPERATIVIDAD: ${det.generalStatus || 'OPERATIVO'}`, 380, rowY + 6.5, { width: 160, align: 'right' });
+          
+          // Divider under card header
+          doc.moveTo(50, rowY + 18).lineTo(545, rowY + 18).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+          
+          const y_body = rowY + 23;
+          // Vertical divider line in the middle of card body
+          doc.moveTo(255, y_body).lineTo(255, y_body + 42).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+          
+          // Left Column (Especificaciones Técnicas)
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#444444').text('Especificaciones Técnicas', 55, y_body);
+          
+          doc.font('Helvetica').fontSize(7).fillColor('#666666').text('Área Ubicado:', 55, y_body + 11);
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#333333').text(parsed.physicalArea, 125, y_body + 11, { width: 125 });
+          
+          doc.font('Helvetica').fontSize(7).fillColor('#666666').text('Agente Impulsor:', 55, y_body + 20);
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#333333').text(parsed.impulseType, 125, y_body + 20);
+          
+          const rechargeDateStr = this.formatDate(det.rechargeDate) === '-' ? 'N/R' : this.formatDate(det.rechargeDate);
+          doc.font('Helvetica').fontSize(7).fillColor('#666666').text('Fecha Recarga:', 55, y_body + 29);
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#333333').text(rechargeDateStr, 125, y_body + 29);
+          
+          const expDateStr = this.formatDate(det.expirationDate) === '-' ? 'N/R' : this.formatDate(det.expirationDate);
+          doc.font('Helvetica').fontSize(7).fillColor('#666666').text('Vencimiento:', 55, y_body + 38);
+          doc.font('Helvetica-Bold').fontSize(7).fillColor('#333333').text(expDateStr, 125, y_body + 38);
+          
+          // Right Column (Chequeo Visual del Puesto)
+          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#444444').text('Chequeo Visual del Puesto', 265, y_body);
+          
+          const drawCheckItem = (label, val, x_pos, y_pos) => {
+            doc.font('Helvetica').fontSize(7).fillColor('#555555').text(label, x_pos, y_pos);
+            doc.font('Helvetica-Bold').fontSize(7).fillColor(val ? 'green' : 'red').text(val ? 'BUENO' : 'FALLA', x_pos + 115, y_pos, { align: 'right', width: 45 });
+          };
+          
+          drawCheckItem('Ubicación Correcta:', parsed.locationOk, 265, y_body + 11);
+          drawCheckItem('Señalización Visible:', parsed.signageOk, 265, y_body + 19);
+          drawCheckItem('Área Demarcada:', parsed.demarcationOk, 265, y_body + 27);
+          drawCheckItem('Acceso Despejado:', parsed.accessOk, 265, y_body + 35);
+          drawCheckItem('Manómetro / Precinto:', parsed.operationOk, 265, y_body + 43);
+          
+          // Sub-body rows for failures and observations
+          let nextY = y_body + 53;
+          if (parsed.maintenancePart) {
+            doc.font('Helvetica-Bold').fontSize(7).fillColor('red').text(`REPUESTO / PARTE EN FALLA: ${parsed.maintenancePart}`, 55, nextY, { width: 195 });
+            nextY += 10;
           }
-          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
+          if (parsed.observationsText) {
+            doc.font('Helvetica-Oblique').fontSize(7).fillColor('#555555').text(`Obs. del Cilindro: ${parsed.observationsText}`, 55, nextY, { width: 480 });
+          }
           
-          doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-          doc.text(`${det.code || 'N/A'} (${det.capacity || 'S/C'})`, 55, rowY + 5);
-          doc.text(det.agentType ? det.agentType.name : '-', 160, rowY + 5);
-          
-          doc.font('Helvetica-Bold').fillColor(det.pressureStatus === 1 ? 'green' : 'red');
-          doc.text(det.pressureStatus === 1 ? 'NORMAL' : 'RECARGAR', 270, rowY + 5);
-          
-          doc.font('Helvetica').fillColor('#333333');
-          const safety = `${det.hoseStatus === 1 ? 'OK' : 'DAÑADA'} / ${det.safetySeal === 1 ? 'SELLO OK' : 'ROTO'}`;
-          doc.text(safety, 360, rowY + 5);
-          
-          const approved = det.status === 'APROBADO';
-          doc.font('Helvetica-Bold').fillColor(approved ? 'green' : 'red');
-          doc.text(approved ? 'SÍ' : 'NO', 485, rowY + 5);
-          
-          doc.y = rowY + rowHeight;
+          doc.y = rowY + rectHeight + 10;
         });
       } else if (inspection.vehicleInspection) {
         const vehInsp = inspection.vehicleInspection;
@@ -531,19 +716,51 @@ class PdfGenerator {
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
           doc.text(chk.accessory ? chk.accessory.name : `Accesorio ID: ${chk.accessoryId}`, 55, rowY + 5);
           
-          const isOpt = chk.status === 'OPTIMO';
-          doc.font('Helvetica-Bold').fillColor(isOpt ? 'green' : 'red');
-          doc.text(chk.status || 'EVALUADO', 300, rowY + 5);
+          // chk.status is stored as boolean in the DB
+          const isFunctional = chk.status === true || chk.status === 1;
+          const statusLabel = isFunctional ? 'ÓPTIMO' : 'CON FALLA';
+          doc.font('Helvetica-Bold').fillColor(isFunctional ? 'green' : 'red');
+          doc.text(statusLabel, 300, rowY + 5);
+          
+          // observations is stored as serialized "B:x|M:x|NE:x|Obs:text" — extract human-readable part
+          let obsDisplay = '-';
+          const rawObs = chk.observations || '';
+          if (rawObs.includes('|')) {
+            // Parse serialized format
+            let buenos = 0, malos = 0, noExiste = 0, obsComment = '';
+            rawObs.split('|').forEach(part => {
+              const [key, ...rest] = part.split(':');
+              const val = rest.join(':');
+              if (key === 'B') buenos = parseInt(val) || 0;
+              else if (key === 'M') malos = parseInt(val) || 0;
+              else if (key === 'NE') noExiste = parseInt(val) || 0;
+              else if (key === 'Obs') obsComment = val || '';
+            });
+            if (noExiste === 1) {
+              obsDisplay = 'NO EXISTE';
+            } else {
+              const parts = [];
+              if (buenos > 0) parts.push(`Sirven: ${buenos}`);
+              if (malos > 0) parts.push(`Fallas: ${malos}`);
+              if (obsComment) parts.push(obsComment);
+              obsDisplay = parts.join(' | ') || '-';
+            }
+          } else if (rawObs.trim()) {
+            obsDisplay = rawObs.trim();
+          }
           
           doc.font('Helvetica').fillColor('#555555');
-          doc.text(chk.observations || '-', 380, rowY + 5, { width: 160 });
+          doc.text(obsDisplay, 380, rowY + 5, { width: 160 });
           
           doc.y = rowY + rowHeight;
         });
       } else if (inspection.protectionInspection) {
         const protInsp = inspection.protectionInspection;
-        const details = protInsp.details || [];
+        const details = (protInsp.details || []).slice();
         
+        // Sort details by category ID to match frontend order
+        details.sort((a, b) => (a.categoryId || 0) - (b.categoryId || 0));
+
         this.drawSectionHeader(doc, 'Control de Inventario de Equipos de Protección');
         const respStr = protInsp.responsible ? `${protInsp.responsible.lastName}, ${protInsp.responsible.firstName}` : `ID: ${protInsp.responsible_id}`;
         
@@ -556,9 +773,11 @@ class PdfGenerator {
         doc.rect(50, tableStartY, doc.page.width - 100, 16).fill('#005C9E');
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
         doc.text('CATEGORÍA DE EQUIPO DE PROTECCIÓN', 55, tableStartY + 4);
-        doc.text('STOCK', 300, tableStartY + 4);
-        doc.text('ESTADO', 380, tableStartY + 4);
-        doc.text('OBSERVACIONES DE DETALLE', 450, tableStartY + 4);
+        doc.text('BUENOS', 255, tableStartY + 4, { width: 40, align: 'center' });
+        doc.text('FALLAS', 300, tableStartY + 4, { width: 40, align: 'center' });
+        doc.text('TOTAL', 345, tableStartY + 4, { width: 40, align: 'center' });
+        doc.text('ESTADO', 390, tableStartY + 4);
+        doc.text('OBSERVACIONES DE DETALLE', 455, tableStartY + 4);
 
         doc.y = tableStartY + 16;
         details.forEach((det, idx) => {
@@ -567,6 +786,48 @@ class PdfGenerator {
             this.drawHeader(doc, title);
           }
           
+          let buenos = det.operative !== undefined ? det.operative : 0;
+          let malos = det.totalChecked !== undefined ? (det.totalChecked - det.operative) : 0;
+          let noExisten = 0;
+          let commentText = '';
+
+          const obsRaw = det.observations || '';
+          if (obsRaw.includes('|')) {
+            const parts = obsRaw.split('|');
+            parts.forEach(part => {
+              const [key, val] = part.split(':');
+              if (key === 'B') buenos = parseInt(val) || 0;
+              else if (key === 'M') malos = parseInt(val) || 0;
+              else if (key === 'NE') noExisten = parseInt(val) || 0;
+              else if (key === 'Obs') commentText = val || '';
+            });
+          } else {
+            commentText = obsRaw;
+          }
+
+          const total = buenos + malos;
+
+          // Determine status label and color
+          let statusLabel = 'SIN NOVEDAD';
+          let statusColor = '#666666';
+          const isAllOk = malos === 0 && noExisten === 0 && buenos > 0;
+          const hasIssues = malos > 0;
+          const hasMissing = noExisten > 0;
+
+          if (isAllOk) {
+            statusLabel = 'OPERATIVO';
+            statusColor = 'green';
+          } else if (buenos === 0 && malos === 0 && noExisten === 0) {
+            statusLabel = 'SIN NOVEDAD';
+            statusColor = '#666666';
+          } else if (hasIssues) {
+            statusLabel = 'REPOSICIÓN';
+            statusColor = 'red';
+          } else if (hasMissing) {
+            statusLabel = 'INCOMPLETO';
+            statusColor = 'orange';
+          }
+
           const rowY = doc.y;
           const rowHeight = 18;
           if (idx % 2 === 1) {
@@ -575,15 +836,18 @@ class PdfGenerator {
           doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
           
           doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
-          doc.text(det.category ? det.category.name : `Categoría ID: ${det.categoryId}`, 55, rowY + 5);
-          doc.text(String(det.quantity || 0), 300, rowY + 5);
+          const categoryName = det.category ? det.category.name : `Categoría ID: ${det.categoryId}`;
+          doc.text(categoryName.substring(0, 48), 55, rowY + 5, { width: 195 });
           
-          const isDisp = det.status === 'DISPONIBLE';
-          doc.font('Helvetica-Bold').fillColor(isDisp ? 'green' : 'orange');
-          doc.text(det.status || 'ACTIVO', 380, rowY + 5);
+          doc.text(String(buenos), 255, rowY + 5, { width: 40, align: 'center' });
+          doc.text(String(malos), 300, rowY + 5, { width: 40, align: 'center' });
+          doc.text(String(total), 345, rowY + 5, { width: 40, align: 'center' });
+          
+          doc.font('Helvetica-Bold').fillColor(statusColor);
+          doc.text(statusLabel, 390, rowY + 5);
           
           doc.font('Helvetica').fillColor('#555555');
-          doc.text(det.observations || '-', 450, rowY + 5, { width: 90 });
+          doc.text(commentText || '-', 455, rowY + 5, { width: 85 });
           
           doc.y = rowY + rowHeight;
         });
@@ -648,24 +912,7 @@ class PdfGenerator {
       }
       if (selectedCols.length === 0) selectedCols = allCols;
 
-      // Calculate layout coordinates
-      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
-      const printableWidth = doc.page.width - 100;
-      let currentX = 50;
-      selectedCols.forEach(c => {
-        c.width = (c.weight / totalWeight) * printableWidth;
-        c.x = currentX;
-        currentX += c.width;
-      });
-
-      // Helper to draw headers
-      const drawTableHeaders = (y) => {
-        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        selectedCols.forEach(col => {
-          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
-        });
-      };
+      const isSelected = (key) => selectedCols.some(c => c.key === key);
 
       // Stats block
       const statsY = doc.y;
@@ -677,77 +924,88 @@ class PdfGenerator {
       
       doc.y = statsY + 45;
 
-      // Table Headers
-      const startY = doc.y;
-      drawTableHeaders(startY);
-      doc.y = startY + 18;
-
-      let isEven = false;
       accidents.forEach((acc) => {
-        if (doc.y > doc.page.height - 65) {
+        const cardFields = [];
+        
+        if (isSelected('accidentType')) cardFields.push({ label: 'Tipo Incidente:', value: acc.type ? acc.type.name : '-' });
+        if (isSelected('facility')) cardFields.push({ label: 'Instalación:', value: acc.facility ? acc.facility.name : '-' });
+        if (isSelected('management')) cardFields.push({ label: 'Gerencia Resp.:', value: acc.management ? acc.management.name : '-' });
+        if (isSelected('status')) {
+          const statusText = acc.processStatus ? acc.processStatus.name : 'REGISTRADO';
+          cardFields.push({ label: 'Estatus:', value: statusText, isStatus: true });
+        }
+        if (isSelected('medicalCenterName')) cardFields.push({ label: 'Centro Médico:', value: acc.medicalCenterName || '-' });
+        if (isSelected('medicalObservations')) cardFields.push({ label: 'Obs. Médicas:', value: acc.medicalObservations || '-' });
+        if (isSelected('globalObservations')) cardFields.push({ label: 'Obs. Globales:', value: acc.globalObservations || '-' });
+        if (isSelected('description')) cardFields.push({ label: 'Descripción:', value: acc.description || '-' });
+
+        // Conservative height check
+        if (doc.y + 150 > doc.page.height - 65) {
           doc.addPage();
           this.drawHeader(doc, title);
+        }
+
+        let rowY = doc.y;
+
+        // Render header details (Date / Time)
+        let headerRight = '';
+        if (isSelected('accidentDate')) {
+          const dateStr = this.formatDate(acc.accidentDate);
+          headerRight += `FECHA: ${dateStr}   `;
+        }
+        if (isSelected('accidentTime')) {
+          const timeStr = acc.accidentTime || acc.accident_time || '-';
+          headerRight += `HORA: ${timeStr}`;
+        }
+
+        // Draw header background
+        doc.rect(50, rowY, 495, 20).fill('#F2F5F8');
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#005C9E');
+        const codeVal = acc.accidentControlNumber || acc.accident_control_number || acc.inpsaselFileNumber || `ID: ${acc.id}`;
+        doc.text(String(codeVal).toUpperCase(), 55, rowY + 6);
+
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+        doc.text(headerRight.trim(), 300, rowY + 6, { width: 240, align: 'right' });
+
+        // Divider
+        doc.moveTo(50, rowY + 20).lineTo(545, rowY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+
+        let currentY = rowY + 26;
+
+        // Render all fields vertically to dynamically wrap and prevent overlap
+        cardFields.forEach((field) => {
+          if (currentY > doc.page.height - 75) {
+            doc.rect(50, rowY, 495, currentY - rowY + 5).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+            
+            doc.addPage();
+            this.drawHeader(doc, title);
+            rowY = doc.y;
+            currentY = rowY;
+            
+            doc.rect(50, currentY, 495, 20).fill('#F2F5F8');
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E');
+            doc.text(`${codeVal} (CONTINUACIÓN)`, 55, currentY + 6);
+            
+            doc.moveTo(50, currentY + 20).lineTo(545, currentY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+            currentY += 26;
+          }
+
+          doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(field.label, 55, currentY, { width: 115 });
           
-          const pageStartY = doc.y;
-          drawTableHeaders(pageStartY);
-          doc.y = pageStartY + 18;
-        }
-
-        const rowHeight = 20;
-        const rowY = doc.y;
-        if (isEven) {
-          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
-        }
-        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
-        
-        selectedCols.forEach(col => {
-          let val = '';
-          let isStatus = false;
-          let isBold = false;
-          if (col.key === 'accidentControlNumber') {
-            val = acc.accidentControlNumber || acc.accident_control_number || acc.inpsaselFileNumber || `ID: ${acc.id}`;
-            isBold = true;
-          } else if (col.key === 'accidentDate') {
-            val = acc.accidentDate ? new Date(acc.accidentDate).toLocaleDateString('es-ES') : '-';
-          } else if (col.key === 'accidentTime') {
-            val = acc.accidentTime || acc.accident_time || '-';
-          } else if (col.key === 'accidentType') {
-            val = acc.type ? acc.type.name : '-';
-          } else if (col.key === 'facility') {
-            val = acc.facility ? acc.facility.name : '-';
-          } else if (col.key === 'management') {
-            val = acc.management ? acc.management.name : '-';
-          } else if (col.key === 'status') {
-            val = acc.processStatus ? acc.processStatus.name : 'REGISTRADO';
-            isStatus = true;
-            isBold = true;
-          } else if (col.key === 'description') {
-            val = acc.description || '-';
-          } else if (col.key === 'medicalCenterName') {
-            val = acc.medicalCenterName || '-';
-          } else if (col.key === 'medicalObservations') {
-            val = acc.medicalObservations || '-';
-          } else if (col.key === 'globalObservations') {
-            val = acc.globalObservations || '-';
-          }
-
-          if (isStatus) {
-            doc.font('Helvetica-Bold').fillColor('#E30613');
-          } else if (isBold) {
-            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+          if (field.isStatus) {
+            const isComp = String(field.value).toLowerCase().includes('comp');
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(isComp ? 'green' : 'orange');
           } else {
-            doc.font('Helvetica').fontSize(7.5).fillColor('#444444');
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
           }
-
-          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
-          const valStr = String(val);
-          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
-
-          doc.text(truncated, col.x + 5, rowY + 6, { width: col.width - 8, lineBreak: false });
+          
+          doc.text(String(field.value), 175, currentY, { width: 360 });
+          currentY = doc.y + 4;
         });
 
-        doc.y += rowHeight;
-        isEven = !isEven;
+        const cardHeight = currentY - rowY;
+        doc.rect(50, rowY, 495, cardHeight).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+        doc.y = rowY + cardHeight + 12;
       });
 
       this.drawFooter(doc);
@@ -771,43 +1029,24 @@ class PdfGenerator {
       doc.currentTitle = title;
       this.drawHeader(doc, title);
 
-      // Define all possible columns and weights
       const allCols = [
-        { key: 'inspectionNumber', label: 'CÓDIGO/INSP.', weight: 110 },
-        { key: 'date', label: 'FECHA', weight: 60 },
-        { key: 'facility', label: 'INSTALACIÓN EVALUADA', weight: 130 },
-        { key: 'inspector', label: 'INSPECTOR RESPONSABLE', weight: 120 },
-        { key: 'typeStatus', label: 'TIPO INSPECCIÓN', weight: 90 },
-        { key: 'status', label: 'ESTATUS EVALUACIÓN', weight: 90 },
-        { key: 'coordinates', label: 'COORDENADAS', weight: 90 },
-        { key: 'observations', label: 'OBSERVACIONES', weight: 140 }
+        { key: 'inspectionNumber', label: 'CÓDIGO/INSP.' },
+        { key: 'date', label: 'FECHA' },
+        { key: 'facility', label: 'INSTALACIÓN EVALUADA' },
+        { key: 'inspector', label: 'INSPECTOR RESPONSABLE' },
+        { key: 'typeStatus', label: 'TIPO INSPECCIÓN' },
+        { key: 'status', label: 'ESTATUS EVALUACIÓN' },
+        { key: 'coordinates', label: 'COORDENADAS' },
+        { key: 'observations', label: 'OBSERVACIONES' }
       ];
 
-      // Filter based on user selection
       let selectedCols = allCols;
       if (columns && Array.isArray(columns) && columns.length > 0) {
         selectedCols = allCols.filter(c => columns.includes(c.key));
       }
       if (selectedCols.length === 0) selectedCols = allCols;
 
-      // Calculate layout coordinates
-      const totalWeight = selectedCols.reduce((sum, c) => sum + c.weight, 0);
-      const printableWidth = doc.page.width - 100;
-      let currentX = 50;
-      selectedCols.forEach(c => {
-        c.width = (c.weight / totalWeight) * printableWidth;
-        c.x = currentX;
-        currentX += c.width;
-      });
-
-      // Helper to draw headers
-      const drawTableHeaders = (y) => {
-        doc.rect(50, y, doc.page.width - 100, 18).fill('#005C9E');
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#FFFFFF');
-        selectedCols.forEach(col => {
-          doc.text(col.label, col.x + 5, y + 5, { width: col.width - 8, lineBreak: false });
-        });
-      };
+      const isSelected = (key) => selectedCols.some(c => c.key === key);
 
       // Stats block
       const statsY = doc.y;
@@ -816,83 +1055,81 @@ class PdfGenerator {
       doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E').text('ESTADÍSTICAS DEL REGISTRO', 65, statsY + 12);
       doc.font('Helvetica').fontSize(8).fillColor('#333333').text(`Total Inspecciones: ${inspections.length} informes registrados`, 215, statsY + 12);
       doc.font('Helvetica').fontSize(8).text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, doc.page.width - 200, statsY + 12, { align: 'right', width: 140 });
-      
       doc.y = statsY + 45;
 
-      // Table Headers
-      const startY = doc.y;
-      drawTableHeaders(startY);
-      doc.y = startY + 18;
-
-      let isEven = false;
       inspections.forEach((insp) => {
-        if (doc.y > doc.page.height - 65) {
+        const cardFields = [];
+
+        let typeStr = 'General';
+        if (insp.extinguisherInspection) typeStr = 'Extintores';
+        else if (insp.vehicleInspection) typeStr = 'Vehicular';
+        else if (insp.protectionInspection) typeStr = 'Protección';
+
+        if (isSelected('facility')) cardFields.push({ label: 'Instalación:', value: insp.facility ? `${insp.facility.name}${insp.facility.location ? ' (' + insp.facility.location.name + ')' : ''}` : '-' });
+        if (isSelected('inspector')) cardFields.push({ label: 'Inspector:', value: insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-' });
+        if (isSelected('typeStatus')) cardFields.push({ label: 'Tipo Inspección:', value: typeStr, isType: true });
+        if (isSelected('status')) {
+          cardFields.push({ label: 'Estatus:', value: insp.status ? insp.status.name : 'Pendiente', isStatus: true, statusId: insp.statusId });
+        }
+        if (isSelected('coordinates')) cardFields.push({ label: 'Coordenadas:', value: insp.coordinates || '-' });
+        if (isSelected('observations')) cardFields.push({ label: 'Observaciones:', value: insp.observations || '-' });
+
+        if (doc.y + 120 > doc.page.height - 65) {
           doc.addPage();
           this.drawHeader(doc, title);
-          
-          const pageStartY = doc.y;
-          drawTableHeaders(pageStartY);
-          doc.y = pageStartY + 18;
         }
 
-        const rowHeight = 20;
-        const rowY = doc.y;
-        if (isEven) {
-          doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill('#F9FAFB');
-        }
-        doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill('#E5E7EB');
-        
-        selectedCols.forEach(col => {
-          let val = '';
-          let isColor = false;
-          let colorHex = '#333333';
-          let isBold = false;
+        let rowY = doc.y;
 
-          if (col.key === 'inspectionNumber') {
-            val = insp.inspectionNumber || `ID: ${insp.id}`;
-          } else if (col.key === 'date') {
-            val = insp.date ? new Date(insp.date).toLocaleDateString('es-ES') : '-';
-          } else if (col.key === 'facility') {
-            val = insp.facility ? insp.facility.name : '-';
-          } else if (col.key === 'inspector') {
-            val = insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-';
-          } else if (col.key === 'typeStatus') {
-            let typeStr = 'General';
-            if (insp.extinguisherInspection) typeStr = 'Extintores';
-            else if (insp.vehicleInspection) typeStr = 'Vehicular';
-            else if (insp.protectionInspection) typeStr = 'Protección';
-            val = typeStr;
-            isColor = true;
-            colorHex = '#005C9E';
-            isBold = true;
-          } else if (col.key === 'status') {
-            val = insp.status ? insp.status.name : 'EN PROCESO';
-            isColor = true;
-            colorHex = insp.statusId === 3 ? '#10B981' : insp.statusId === 2 ? '#F59E0B' : '#6B7280';
-            isBold = true;
-          } else if (col.key === 'coordinates') {
-            val = insp.coordinates || '-';
-          } else if (col.key === 'observations') {
-            val = insp.observations || '-';
+        doc.rect(50, rowY, 495, 20).fill('#F2F5F8');
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#005C9E');
+        const codeVal = insp.inspectionNumber || `ID: ${insp.id}`;
+        doc.text(String(codeVal).toUpperCase(), 55, rowY + 6);
+
+        let headerRight = '';
+        if (isSelected('date')) {
+          const dateStr = this.formatDate(insp.date);
+          headerRight = `FECHA: ${dateStr}`;
+        }
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+        doc.text(headerRight.trim(), 300, rowY + 6, { width: 240, align: 'right' });
+
+        doc.moveTo(50, rowY + 20).lineTo(545, rowY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+
+        let currentY = rowY + 26;
+
+        cardFields.forEach((field) => {
+          if (currentY > doc.page.height - 75) {
+            doc.rect(50, rowY, 495, currentY - rowY + 5).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+            doc.addPage();
+            this.drawHeader(doc, title);
+            rowY = doc.y;
+            currentY = rowY;
+            doc.rect(50, currentY, 495, 20).fill('#F2F5F8');
+            doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E');
+            doc.text(`${codeVal} (CONTINUACIÓN)`, 55, currentY + 6);
+            doc.moveTo(50, currentY + 20).lineTo(545, currentY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+            currentY += 26;
           }
 
-          if (isColor) {
-            doc.font('Helvetica-Bold').fillColor(colorHex);
-          } else if (isBold) {
-            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+          doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(field.label, 55, currentY, { width: 115 });
+
+          if (field.isType) {
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#005C9E');
+          } else if (field.isStatus) {
+            const statusColor = field.statusId === 3 ? '#10B981' : field.statusId === 2 ? '#F59E0B' : '#6B7280';
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor(statusColor);
           } else {
-            doc.font('Helvetica').fontSize(7.5).fillColor('#333333');
+            doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
           }
 
-          const maxChars = Math.max(8, Math.floor(col.width / 5.2));
-          const valStr = String(val);
-          const truncated = valStr.length > maxChars ? valStr.substring(0, maxChars - 3) + '...' : valStr;
-
-          doc.text(truncated, col.x + 5, rowY + 6, { width: col.width - 8, lineBreak: false });
+          doc.text(String(field.value), 175, currentY, { width: 360 });
+          currentY = doc.y + 4;
         });
 
-        doc.y += rowHeight;
-        isEven = !isEven;
+        const cardHeight = currentY - rowY;
+        doc.rect(50, rowY, 495, cardHeight).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+        doc.y = rowY + cardHeight + 12;
       });
 
       this.drawFooter(doc);
