@@ -91,11 +91,22 @@ exports.createFacility = async (req, res, next) => {
       locationId = location.id;
     }
 
+    let voltageLevel = otherData.voltageLevel;
+    if (otherData.installationTypeId) {
+      const typeRecord = await InstallationType.findByPk(otherData.installationTypeId);
+      const typeName = typeRecord ? typeRecord.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+      if (!typeName.includes("subestacion")) {
+        voltageLevel = null;
+      }
+    } else {
+      voltageLevel = null;
+    }
+
     const newFacility = await Facility.create({
       name,
       coordinates: otherData.coordinates,
       installationTypeId: otherData.installationTypeId,
-      voltageLevel: otherData.voltageLevel,
+      voltageLevel,
       locationId
     });
 
@@ -156,11 +167,22 @@ exports.updateFacility = async (req, res, next) => {
       locationId = location.id;
     }
 
+    let voltageLevel = otherData.voltageLevel;
+    if (otherData.installationTypeId) {
+      const typeRecord = await InstallationType.findByPk(otherData.installationTypeId);
+      const typeName = typeRecord ? typeRecord.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+      if (!typeName.includes("subestacion")) {
+        voltageLevel = null;
+      }
+    } else {
+      voltageLevel = null;
+    }
+
     const updateData = {
       name: name || facility.name,
       coordinates: otherData.coordinates,
       installationTypeId: otherData.installationTypeId,
-      voltageLevel: otherData.voltageLevel,
+      voltageLevel,
       locationId,
       status: req.body.status !== undefined ? req.body.status : facility.status
     };

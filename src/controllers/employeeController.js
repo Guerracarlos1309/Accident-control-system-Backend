@@ -70,6 +70,22 @@ exports.createEmployee = async (req, res, next) => {
     if (req.file) {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
     }
+
+    // Si seleccionó 'Otros', registrar el nuevo Cargo en la base de datos
+    if (employeeData.occupationId === 'other' && employeeData.customOccupation) {
+      const [occRecord] = await Occupation.findOrCreate({
+        where: { name: employeeData.customOccupation.trim() }
+      });
+      employeeData.occupationId = occRecord.id;
+    }
+
+    // Si seleccionó 'Otros', registrar la nueva Ocupación en la base de datos
+    if (employeeData.jobTitleId === 'other' && employeeData.customJobTitle) {
+      const [jtRecord] = await JobTitle.findOrCreate({
+        where: { name: employeeData.customJobTitle.trim() }
+      });
+      employeeData.jobTitleId = jtRecord.id;
+    }
     
     // Basic server-side validation for required fields
     const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'managementId', 'jobTitleId', 'occupationId'];
@@ -130,6 +146,22 @@ exports.updateEmployee = async (req, res, next) => {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
     }
     
+    // Si seleccionó 'Otros', registrar el nuevo Cargo en la base de datos
+    if (employeeData.occupationId === 'other' && employeeData.customOccupation) {
+      const [occRecord] = await Occupation.findOrCreate({
+        where: { name: employeeData.customOccupation.trim() }
+      });
+      employeeData.occupationId = occRecord.id;
+    }
+
+    // Si seleccionó 'Otros', registrar la nueva Ocupación en la base de datos
+    if (employeeData.jobTitleId === 'other' && employeeData.customJobTitle) {
+      const [jtRecord] = await JobTitle.findOrCreate({
+        where: { name: employeeData.customJobTitle.trim() }
+      });
+      employeeData.jobTitleId = jtRecord.id;
+    }
+
     console.log(`UPDATE REQUEST - Param ID: ${personal_number}`, employeeData);
 
     const [updatedRows] = await Employee.update(employeeData, {

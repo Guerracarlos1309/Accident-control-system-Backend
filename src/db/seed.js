@@ -84,9 +84,13 @@ async function seed() {
     ]);
 
     await InstallationType.bulkCreate([
-      { id: 1, name: "Almacén" },
-      { id: 2, name: "Oficina" },
-      { id: 3, name: "Planta Industrial" },
+      { id: 1, name: "Subestaciones" },
+      { id: 2, name: "Centro de servicios" },
+      { id: 3, name: "Oficinas comerciales CIAO" },
+      { id: 4, name: "Planta de generación termoeléctrica" },
+      { id: 5, name: "Planta de generación distribuida" },
+      { id: 6, name: "Centrales Hidroeléctricas" },
+      { id: 7, name: "Sede administrativa" },
     ]);
 
     await ProtectionType.bulkCreate([
