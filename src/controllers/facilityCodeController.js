@@ -44,10 +44,9 @@ exports.getNextCode = async (req, res, next) => {
 
     const yearInt = parseInt(year);
 
-    // Find the record with the maximum sequence for this type and year
+    // Find the record with the maximum sequence for this year globally
     const lastRecord = await FacilityInspectionCode.findOne({
       where: {
-        type: typeUpper,
         year: yearInt
       },
       order: [['sequence', 'DESC']]
@@ -69,7 +68,7 @@ exports.getNextCode = async (req, res, next) => {
 // Create a new code record
 exports.createFacilityCode = async (req, res, next) => {
   try {
-    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, notes } = req.body;
+    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, memoDate, notes } = req.body;
     console.log("createFacilityCode body:", req.body);
     console.log("createFacilityCode file:", req.file);
 
@@ -118,12 +117,26 @@ exports.createFacilityCode = async (req, res, next) => {
       parsedMemoNumber = null;
     }
 
+    let parsedMemoDate = memoDate;
+    if (!memoDate || memoDate === 'null' || memoDate === 'undefined' || memoDate === '') {
+      parsedMemoDate = null;
+    }
+
     let parsedNotes = notes;
     if (!notes || notes === 'null' || notes === 'undefined' || notes === '') {
       parsedNotes = null;
     }
 
-    const pdfPath = req.file ? `/uploads/inspections/${req.file.filename}` : null;
+    let pdfPath = null;
+    let pdfPath2 = null;
+    if (req.files) {
+      if (req.files['pdfFile'] && req.files['pdfFile'][0]) {
+        pdfPath = `/uploads/inspections/${req.files['pdfFile'][0].filename}`;
+      }
+      if (req.files['pdfFile2'] && req.files['pdfFile2'][0]) {
+        pdfPath2 = `/uploads/inspections/${req.files['pdfFile2'][0].filename}`;
+      }
+    }
 
     const newRecord = await FacilityInspectionCode.create({
       facilityId: parsedFacilityId,
@@ -134,7 +147,9 @@ exports.createFacilityCode = async (req, res, next) => {
       date: parsedDate,
       inspectionDate: parsedInspectionDate,
       memoNumber: parsedMemoNumber,
+      memoDate: parsedMemoDate,
       pdfPath,
+      pdfPath2,
       notes: parsedNotes
     });
 
@@ -159,7 +174,7 @@ exports.createFacilityCode = async (req, res, next) => {
 exports.updateFacilityCode = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, notes, deletePdf } = req.body;
+    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, memoDate, notes, deletePdf, deletePdf2 } = req.body;
 
     const record = await FacilityInspectionCode.findByPk(id);
     if (!record) {
@@ -220,6 +235,15 @@ exports.updateFacilityCode = async (req, res, next) => {
       }
     }
 
+    // Update memoDate
+    if (memoDate !== undefined) {
+      if (!memoDate || memoDate === 'null' || memoDate === 'undefined' || memoDate === '') {
+        record.memoDate = null;
+      } else {
+        record.memoDate = memoDate;
+      }
+    }
+
     // Update notes
     if (notes !== undefined) {
       if (!notes || notes === 'null' || notes === 'undefined' || notes === '') {
@@ -230,10 +254,20 @@ exports.updateFacilityCode = async (req, res, next) => {
     }
 
     // PDF Path handling
-    if (req.file) {
-      record.pdfPath = `/uploads/inspections/${req.file.filename}`;
-    } else if (deletePdf === 'true' || deletePdf === true) {
+    if (req.files) {
+      if (req.files['pdfFile'] && req.files['pdfFile'][0]) {
+        record.pdfPath = `/uploads/inspections/${req.files['pdfFile'][0].filename}`;
+      }
+      if (req.files['pdfFile2'] && req.files['pdfFile2'][0]) {
+        record.pdfPath2 = `/uploads/inspections/${req.files['pdfFile2'][0].filename}`;
+      }
+    }
+
+    if (deletePdf === 'true' || deletePdf === true) {
       record.pdfPath = null;
+    }
+    if (deletePdf2 === 'true' || deletePdf2 === true) {
+      record.pdfPath2 = null;
     }
 
     await record.save();

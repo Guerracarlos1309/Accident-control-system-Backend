@@ -45,10 +45,20 @@ const FacilityInspectionCode = sequelize.define('FacilityInspectionCode', {
     allowNull: true,
     field: 'memo_number'
   },
+  memoDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'memo_date'
+  },
   pdfPath: {
     type: DataTypes.STRING(255),
     allowNull: true,
     field: 'pdf_path'
+  },
+  pdfPath2: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'pdf_path_2'
   },
   notes: {
     type: DataTypes.TEXT,
