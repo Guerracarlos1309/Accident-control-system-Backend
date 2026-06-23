@@ -1,4 +1,4 @@
-const { FacilityInspectionCode, Facility, Location } = require('../models');
+const { FacilityInspectionCode, Facility, Location, Parish, City } = require('../models');
 const PdfGenerator = require('../utils/pdfGenerator');
 const { Op } = require('sequelize');
 
@@ -38,8 +38,8 @@ exports.getNextCode = async (req, res, next) => {
     }
 
     const typeUpper = type.toUpperCase();
-    if (typeUpper !== 'I' && typeUpper !== 'M') {
-      return res.status(400).json({ message: 'El tipo debe ser I (Inspección) o M (Mantenimiento)' });
+    if (typeUpper !== 'I' && typeUpper !== 'M' && typeUpper !== 'C') {
+      return res.status(400).json({ message: 'El tipo debe ser I (Inspección), M (Memorando) o C (Caracterización)' });
     }
 
     const yearInt = parseInt(year);
@@ -69,11 +69,11 @@ exports.getNextCode = async (req, res, next) => {
 // Create a new code record
 exports.createFacilityCode = async (req, res, next) => {
   try {
-    const { facilityId, type, sequence, year, code, date, notes } = req.body;
+    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, notes } = req.body;
     console.log("createFacilityCode body:", req.body);
+    console.log("createFacilityCode file:", req.file);
 
     const missing = [];
-    if (!facilityId || isNaN(parseInt(facilityId))) missing.push(`facilityId (${facilityId})`);
     if (!type) missing.push(`type (${type})`);
     if (sequence === undefined || sequence === null || isNaN(parseInt(sequence))) missing.push(`sequence (${sequence})`);
     if (year === undefined || year === null || isNaN(parseInt(year))) missing.push(`year (${year})`);
@@ -95,14 +95,47 @@ exports.createFacilityCode = async (req, res, next) => {
       return res.status(400).json({ message: `El código "${code}" ya está registrado en el sistema. Debe ser único.` });
     }
 
+    // Parse nullable fields
+    let parsedFacilityId = facilityId;
+    if (!facilityId || facilityId === 'null' || facilityId === 'undefined' || facilityId === '') {
+      parsedFacilityId = null;
+    } else {
+      parsedFacilityId = parseInt(facilityId);
+    }
+
+    let parsedDate = date;
+    if (!date || date === 'null' || date === 'undefined' || date === '') {
+      parsedDate = null;
+    }
+
+    let parsedInspectionDate = inspectionDate;
+    if (!inspectionDate || inspectionDate === 'null' || inspectionDate === 'undefined' || inspectionDate === '') {
+      parsedInspectionDate = null;
+    }
+
+    let parsedMemoNumber = memoNumber;
+    if (!memoNumber || memoNumber === 'null' || memoNumber === 'undefined' || memoNumber === '') {
+      parsedMemoNumber = null;
+    }
+
+    let parsedNotes = notes;
+    if (!notes || notes === 'null' || notes === 'undefined' || notes === '') {
+      parsedNotes = null;
+    }
+
+    const pdfPath = req.file ? `/uploads/inspections/${req.file.filename}` : null;
+
     const newRecord = await FacilityInspectionCode.create({
-      facilityId,
+      facilityId: parsedFacilityId,
       type: typeUpper,
       sequence: parseInt(sequence),
       year: parseInt(year),
       code: code.toUpperCase(),
-      date: date || new Date(),
-      notes
+      date: parsedDate,
+      inspectionDate: parsedInspectionDate,
+      memoNumber: parsedMemoNumber,
+      pdfPath,
+      notes: parsedNotes
     });
 
     // Fetch complete record with facility details for frontend
@@ -126,7 +159,7 @@ exports.createFacilityCode = async (req, res, next) => {
 exports.updateFacilityCode = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { facilityId, type, sequence, year, code, date, notes } = req.body;
+    const { facilityId, type, sequence, year, code, date, inspectionDate, memoNumber, notes, deletePdf } = req.body;
 
     const record = await FacilityInspectionCode.findByPk(id);
     if (!record) {
@@ -147,12 +180,61 @@ exports.updateFacilityCode = async (req, res, next) => {
       }
     }
 
-    if (facilityId) record.facilityId = facilityId;
+    // Parse and update facilityId
+    if (facilityId !== undefined) {
+      if (!facilityId || facilityId === 'null' || facilityId === 'undefined' || facilityId === '') {
+        record.facilityId = null;
+      } else {
+        record.facilityId = parseInt(facilityId);
+      }
+    }
+
     if (type) record.type = type.toUpperCase();
     if (sequence) record.sequence = parseInt(sequence);
     if (year) record.year = parseInt(year);
-    if (date) record.date = date;
-    if (notes !== undefined) record.notes = notes;
+
+    // Update date
+    if (date !== undefined) {
+      if (!date || date === 'null' || date === 'undefined' || date === '') {
+        record.date = null;
+      } else {
+        record.date = date;
+      }
+    }
+
+    // Update inspectionDate
+    if (inspectionDate !== undefined) {
+      if (!inspectionDate || inspectionDate === 'null' || inspectionDate === 'undefined' || inspectionDate === '') {
+        record.inspectionDate = null;
+      } else {
+        record.inspectionDate = inspectionDate;
+      }
+    }
+
+    // Update memoNumber
+    if (memoNumber !== undefined) {
+      if (!memoNumber || memoNumber === 'null' || memoNumber === 'undefined' || memoNumber === '') {
+        record.memoNumber = null;
+      } else {
+        record.memoNumber = memoNumber;
+      }
+    }
+
+    // Update notes
+    if (notes !== undefined) {
+      if (!notes || notes === 'null' || notes === 'undefined' || notes === '') {
+        record.notes = null;
+      } else {
+        record.notes = notes;
+      }
+    }
+
+    // PDF Path handling
+    if (req.file) {
+      record.pdfPath = `/uploads/inspections/${req.file.filename}`;
+    } else if (deletePdf === 'true' || deletePdf === true) {
+      record.pdfPath = null;
+    }
 
     await record.save();
 
@@ -199,7 +281,18 @@ exports.downloadFacilityCodeReport = async (req, res, next) => {
         {
           model: Facility,
           as: 'facility',
-          include: [{ model: Location, as: 'location' }]
+          include: [{
+            model: Location,
+            as: 'location',
+            include: [{
+              model: Parish,
+              as: 'parish',
+              include: [{
+                model: City,
+                as: 'city'
+              }]
+            }]
+          }]
         }
       ]
     });

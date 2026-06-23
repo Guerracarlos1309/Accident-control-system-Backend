@@ -10,7 +10,7 @@ const FacilityInspectionCode = sequelize.define('FacilityInspectionCode', {
   },
   facilityId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'facility_id'
   },
   type: {
@@ -32,8 +32,23 @@ const FacilityInspectionCode = sequelize.define('FacilityInspectionCode', {
   },
   date: {
     type: DataTypes.DATEONLY,
-    allowNull: false,
+    allowNull: true,
     defaultValue: DataTypes.NOW
+  },
+  inspectionDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'inspection_date'
+  },
+  memoNumber: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'memo_number'
+  },
+  pdfPath: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'pdf_path'
   },
   notes: {
     type: DataTypes.TEXT,

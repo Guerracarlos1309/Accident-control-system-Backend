@@ -1169,7 +1169,7 @@ class PdfGenerator {
       doc.on('error', err => reject(err));
 
       const facilityName = codeRecord.facility ? codeRecord.facility.name : '-';
-      const typeLabel    = codeRecord.type === 'I' ? 'INSPECCIÓN' : 'MEMORATIVO';
+      const typeLabel    = codeRecord.type === 'I' ? 'INSPECCIÓN' : codeRecord.type === 'C' ? 'CARACTERIZACIÓN' : 'MEMORATIVO';
       const title        = `Informe de Sede — ${facilityName}`;
       doc.currentTitle   = title;
       this.drawHeader(doc, title);
@@ -1177,8 +1177,13 @@ class PdfGenerator {
       // ── Section 1: Datos del Código de Control ──────────────────────────────
       this.drawSectionHeader(doc, 'Datos del Código de Control');
 
-      const locationName = codeRecord.facility && codeRecord.facility.location
-        ? codeRecord.facility.location.name : '-';
+      const loc = codeRecord.facility && codeRecord.facility.location;
+      const locParts = [];
+      if (loc && loc.name) locParts.push(loc.name);
+      if (loc && loc.parish && loc.parish.name) locParts.push(loc.parish.name);
+      if (loc && loc.parish && loc.parish.city && loc.parish.city.name) locParts.push(loc.parish.city.name);
+      const locationName = locParts.length > 0 ? locParts.join(', ') : '-';
+
       const dateStr = this.formatDate(codeRecord.date);
       const seqStr  = codeRecord.sequence ? String(codeRecord.sequence).padStart(3, '0') : '-';
       const yearStr = codeRecord.year ? String(codeRecord.year) : '-';
@@ -1188,7 +1193,7 @@ class PdfGenerator {
       // Full-width rows for fields that can be long
       const h1 = this.drawDataRowWithHeight(doc, 'Instalación / Sede:', facilityName, 50, doc.y, fullW);
       doc.y += h1 + 6;
-      const h2 = this.drawDataRowWithHeight(doc, 'Ubicación / Zona:',   locationName, 50, doc.y, fullW);
+      const h2 = this.drawDataRowWithHeight(doc, 'Ubicación Geográfica:',   locationName, 50, doc.y, fullW);
       doc.y += h2 + 6;
 
       // Two-column row: Código | Tipo de Código
@@ -1201,7 +1206,15 @@ class PdfGenerator {
       const rowBY = doc.y;
       const h4a = this.drawDataRowWithHeight(doc, 'Fecha del Informe:', dateStr,                   50,  rowBY, 240);
       const h4b = this.drawDataRowWithHeight(doc, 'Secuencia / Año:',   `${seqStr} / ${yearStr}`,  315, rowBY, 230);
-      doc.y = rowBY + Math.max(h4a, h4b) + 12;
+      doc.y = rowBY + Math.max(h4a, h4b) + 6;
+
+      // Two-column row: Fecha de la Inspección | Memo de Entrega
+      const rowCY = doc.y;
+      const inspectionDateStr = this.formatDate(codeRecord.inspectionDate);
+      const memoNumberStr = codeRecord.memoNumber || '-';
+      const h5a = this.drawDataRowWithHeight(doc, 'Fecha de la Inspección:', inspectionDateStr, 50,  rowCY, 240);
+      const h5b = this.drawDataRowWithHeight(doc, 'Memo de Entrega:',        memoNumberStr,     315, rowCY, 230);
+      doc.y = rowCY + Math.max(h5a, h5b) + 12;
 
 
       // ── Section 2: Resumen / Informe ────────────────────────────────────────
