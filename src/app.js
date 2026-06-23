@@ -20,6 +20,7 @@ const inspectionRoutes = require("./routes/inspectionRoutes");
 const facilityRoutes = require("./routes/facilityRoutes");
 const protectionRoutes = require("./routes/protectionRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const facilityCodeRoutes = require("./routes/facilityCodeRoutes");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/inspections", inspectionRoutes);
 app.use("/api/facilities", facilityRoutes);
 app.use("/api/protection", protectionRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/facility-codes", facilityCodeRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

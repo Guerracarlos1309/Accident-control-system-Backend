@@ -67,6 +67,23 @@ exports.createEmployee = async (req, res, next) => {
   try {
     const employeeData = req.body;
     
+    if (
+      employeeData.email === '' || 
+      employeeData.email === null || 
+      employeeData.email === undefined || 
+      (typeof employeeData.email === 'string' && (employeeData.email.trim() === '' || employeeData.email.trim().toLowerCase() === 'null' || employeeData.email.trim().toLowerCase() === 'undefined'))
+    ) {
+      employeeData.email = null;
+    }
+    if (
+      employeeData.phone === '' || 
+      employeeData.phone === null || 
+      employeeData.phone === undefined || 
+      (typeof employeeData.phone === 'string' && (employeeData.phone.trim() === '' || employeeData.phone.trim().toLowerCase() === 'null' || employeeData.phone.trim().toLowerCase() === 'undefined'))
+    ) {
+      employeeData.phone = null;
+    }
+
     if (req.file) {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
     }
@@ -142,6 +159,23 @@ exports.updateEmployee = async (req, res, next) => {
     const { personal_number } = req.params;
     const employeeData = req.body;
     
+    if (
+      employeeData.email === '' || 
+      employeeData.email === null || 
+      employeeData.email === undefined || 
+      (typeof employeeData.email === 'string' && (employeeData.email.trim() === '' || employeeData.email.trim().toLowerCase() === 'null' || employeeData.email.trim().toLowerCase() === 'undefined'))
+    ) {
+      employeeData.email = null;
+    }
+    if (
+      employeeData.phone === '' || 
+      employeeData.phone === null || 
+      employeeData.phone === undefined || 
+      (typeof employeeData.phone === 'string' && (employeeData.phone.trim() === '' || employeeData.phone.trim().toLowerCase() === 'null' || employeeData.phone.trim().toLowerCase() === 'undefined'))
+    ) {
+      employeeData.phone = null;
+    }
+
     if (req.file) {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
     }

@@ -102,6 +102,25 @@ class PdfGenerator {
   }
 
   /**
+   * Helper to draw key-value info rows and return the height of the row to avoid overlapping
+   */
+  static drawDataRowWithHeight(doc, label, value, x, y, colWidth = 240) {
+    const labelW = 100;
+    const valW = colWidth - 105;
+
+    // Use a temporary block to measure heights
+    const labelH = doc.font('Helvetica-Bold').fontSize(8).heightOfString(label, { width: labelW });
+    const valH = doc.font('Helvetica').fontSize(8).heightOfString(value || '-', { width: valW });
+
+    // Render the text
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555').text(label, x, y, { width: labelW });
+    doc.font('Helvetica').fontSize(8).fillColor('#111111').text(value || '-', x + 105, y, { width: valW });
+
+    return Math.max(labelH, valH);
+  }
+
+
+  /**
    * 1. GENERATE PAYROLL (NOMINAS) REPORT PDF
    */
   static generatePayrollPdf(employees, columns) {
@@ -1136,6 +1155,183 @@ class PdfGenerator {
       doc.end();
     });
   }
+  /**
+   * 6. GENERATE COMBINED FACILITY CODE + INSPECTIONS PDF
+   * Shows: code metadata, full resumen/informe, then all inspections for that facility.
+   */
+  static generateFacilityFullReport(codeRecord, inspections) {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+      const chunks = [];
+
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', err => reject(err));
+
+      const facilityName = codeRecord.facility ? codeRecord.facility.name : '-';
+      const typeLabel    = codeRecord.type === 'I' ? 'INSPECCIÓN' : 'MEMORATIVO';
+      const title        = `Informe de Sede — ${facilityName}`;
+      doc.currentTitle   = title;
+      this.drawHeader(doc, title);
+
+      // ── Section 1: Datos del Código de Control ──────────────────────────────
+      this.drawSectionHeader(doc, 'Datos del Código de Control');
+
+      const locationName = codeRecord.facility && codeRecord.facility.location
+        ? codeRecord.facility.location.name : '-';
+      const dateStr = this.formatDate(codeRecord.date);
+      const seqStr  = codeRecord.sequence ? String(codeRecord.sequence).padStart(3, '0') : '-';
+      const yearStr = codeRecord.year ? String(codeRecord.year) : '-';
+      const pageW   = doc.page.width;
+      const fullW   = pageW - 100; // 495px usable width
+
+      // Full-width rows for fields that can be long
+      const h1 = this.drawDataRowWithHeight(doc, 'Instalación / Sede:', facilityName, 50, doc.y, fullW);
+      doc.y += h1 + 6;
+      const h2 = this.drawDataRowWithHeight(doc, 'Ubicación / Zona:',   locationName, 50, doc.y, fullW);
+      doc.y += h2 + 6;
+
+      // Two-column row: Código | Tipo de Código
+      const rowAY = doc.y;
+      const h3a = this.drawDataRowWithHeight(doc, 'Código Único:',    codeRecord.code, 50,  rowAY, 240);
+      const h3b = this.drawDataRowWithHeight(doc, 'Tipo de Código:',  typeLabel,       315, rowAY, 230);
+      doc.y = rowAY + Math.max(h3a, h3b) + 6;
+
+      // Two-column row: Fecha | Secuencia/Año
+      const rowBY = doc.y;
+      const h4a = this.drawDataRowWithHeight(doc, 'Fecha del Informe:', dateStr,                   50,  rowBY, 240);
+      const h4b = this.drawDataRowWithHeight(doc, 'Secuencia / Año:',   `${seqStr} / ${yearStr}`,  315, rowBY, 230);
+      doc.y = rowBY + Math.max(h4a, h4b) + 12;
+
+
+      // ── Section 2: Resumen / Informe ────────────────────────────────────────
+      this.drawSectionHeader(doc, 'Resumen / Informe del Código');
+
+      const notesText = (codeRecord.notes || '').trim();
+
+
+      if (notesText) {
+        doc.font('Helvetica').fontSize(9).fillColor('#222222').text(notesText, 50, doc.y, {
+          width: pageW - 100,
+          align: 'justify',
+          lineGap: 3.5,
+        });
+        doc.y += 14;
+      } else {
+        doc.font('Helvetica-Oblique').fontSize(9).fillColor('#888888')
+          .text('Sin resumen o informe registrado para este código.', 50, doc.y, {
+            width: pageW - 100,
+            align: 'center',
+          });
+        doc.y += 20;
+      }
+
+      // ── Section 3: Inspecciones de la Sede ──────────────────────────────────
+      if (doc.y > doc.page.height - 100) {
+        doc.addPage();
+        this.drawHeader(doc, title);
+      }
+
+      this.drawSectionHeader(doc, `Inspecciones Registradas en la Sede (${inspections.length})`);
+
+      if (inspections.length === 0) {
+        doc.font('Helvetica-Oblique').fontSize(9).fillColor('#888888')
+          .text('No se encontraron inspecciones registradas para esta sede.', 50, doc.y, {
+            width: pageW - 100,
+            align: 'center',
+          });
+        doc.y += 20;
+      } else {
+        inspections.forEach((insp) => {
+          let typeStr = 'General';
+          if (insp.extinguisherInspection) typeStr = 'Extintores';
+          else if (insp.vehicleInspection)  typeStr = 'Vehicular';
+          else if (insp.protectionInspection) typeStr = 'Protección';
+
+          const cardFields = [];
+          cardFields.push({ label: 'Inspector:', value: insp.inspector ? `${insp.inspector.lastName}, ${insp.inspector.firstName}` : '-' });
+          cardFields.push({ label: 'Tipo Inspección:', value: typeStr, isType: true });
+          cardFields.push({ label: 'Estatus:', value: insp.status ? insp.status.name : 'Pendiente', isStatus: true, statusId: insp.statusId });
+          if (insp.observations) {
+            cardFields.push({ label: 'Observaciones:', value: insp.observations });
+          }
+
+          if (doc.y + 100 > doc.page.height - 65) {
+            doc.addPage();
+            this.drawHeader(doc, title);
+          }
+
+          let rowY = doc.y;
+          const codeVal = insp.inspectionNumber || `ID: ${insp.id}`;
+          const dateVal = this.formatDate(insp.date);
+
+          // Card header
+          doc.rect(50, rowY, 495, 20).fill('#F2F5F8');
+          doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#005C9E');
+          doc.text(String(codeVal).toUpperCase(), 55, rowY + 6);
+          doc.font('Helvetica-Bold').fontSize(8).fillColor('#555555');
+          doc.text(`FECHA: ${dateVal}`, 300, rowY + 6, { width: 240, align: 'right' });
+          doc.moveTo(50, rowY + 20).lineTo(545, rowY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+
+          let currentY = rowY + 26;
+
+          cardFields.forEach((field) => {
+            if (currentY > doc.page.height - 75) {
+              doc.rect(50, rowY, 495, currentY - rowY + 5).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+              doc.addPage();
+              this.drawHeader(doc, title);
+              rowY = doc.y;
+              currentY = rowY;
+              doc.rect(50, currentY, 495, 20).fill('#F2F5F8');
+              doc.font('Helvetica-Bold').fontSize(8).fillColor('#005C9E');
+              doc.text(`${codeVal} (CONT.)`, 55, currentY + 6);
+              doc.moveTo(50, currentY + 20).lineTo(545, currentY + 20).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+              currentY += 26;
+            }
+
+            doc.font('Helvetica').fontSize(7.5).fillColor('#666666').text(field.label, 55, currentY, { width: 115 });
+
+            if (field.isType) {
+              doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#005C9E');
+            } else if (field.isStatus) {
+              const statusColor = field.statusId === 3 ? '#10B981' : field.statusId === 2 ? '#F59E0B' : '#6B7280';
+              doc.font('Helvetica-Bold').fontSize(7.5).fillColor(statusColor);
+            } else {
+              doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#333333');
+            }
+
+            doc.text(String(field.value), 175, currentY, { width: 360 });
+            currentY = doc.y + 4;
+          });
+
+          const cardHeight = currentY - rowY;
+          doc.rect(50, rowY, 495, cardHeight).lineWidth(0.5).strokeColor('#E5E7EB').stroke();
+          doc.y = rowY + cardHeight + 10;
+        });
+      }
+
+      // ── Signature lines ──────────────────────────────────────────────────────
+      if (doc.y > doc.page.height - 90) {
+        doc.addPage();
+        this.drawHeader(doc, title);
+        doc.y += 40;
+      }
+
+      doc.y += 20;
+      const sigY = doc.y + 35;
+      doc.moveTo(80, sigY).lineTo(240, sigY).lineWidth(0.5).strokeColor('#888888').stroke();
+      doc.moveTo(pageW - 240, sigY).lineTo(pageW - 80, sigY).stroke();
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor('#444444');
+      doc.text('INSPECTOR / RESPONSABLE ASHO',         80,           sigY + 5, { width: 160, align: 'center' });
+      doc.text('DELEGADO DE INSTALACIÓN / PREVENCIÓN', pageW - 240,  sigY + 5, { width: 160, align: 'center' });
+
+      this.drawFooter(doc);
+      doc.end();
+    });
+  }
 }
+
+module.exports = PdfGenerator;
 
 module.exports = PdfGenerator;

@@ -52,6 +52,7 @@ const ProtectionEquipmentCategory = require('./ProtectionEquipmentCategory');
 const ProtectionEquipment = require('./ProtectionEquipment');
 const ProtectionInspection = require('./ProtectionInspection');
 const ProtectionInspectionDetails = require('./ProtectionInspectionDetails');
+const FacilityInspectionCode = require('./FacilityInspectionCode');
 
 // --- Associations ---
 
@@ -89,6 +90,9 @@ Facility.belongsTo(InstallationType, { foreignKey: 'installation_type_id', as: '
 
 Facility.hasMany(FacilityImage, { foreignKey: 'facility_id', as: 'images' });
 FacilityImage.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
+
+Facility.hasMany(FacilityInspectionCode, { foreignKey: 'facility_id', as: 'inspectionCodes' });
+FacilityInspectionCode.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
 
 // --- Accidents & Incidents Associations ---
 
@@ -229,5 +233,6 @@ module.exports = {
   InspectionStatus, Inspection, AgentType, ExtinguisherInspection, ExtinguisherDetail, 
   VehicleInspection, InspectionDetail,
   InstallationType, Facility, FacilityImage, ProtectionType, ProtectionEquipmentCategory, 
-  ProtectionEquipment, ProtectionInspection, ProtectionInspectionDetails
+  ProtectionEquipment, ProtectionInspection, ProtectionInspectionDetails,
+  FacilityInspectionCode
 };
