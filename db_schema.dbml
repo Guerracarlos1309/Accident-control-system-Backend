@@ -1,0 +1,482 @@
+Table role {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(100)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table users {
+  id integer [primary key, increment, unique]
+  username varchar(50) [not null, unique]
+  email varchar(70) [unique]
+  first_name varchar(50)
+  last_name varchar(50)
+  password varchar(500) [not null]
+  status integer [default: 1]
+  last_login datetime
+  role_id integer
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table occupation {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table job_title {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(150)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table employee {
+  id integer [unique]
+  personal_number varchar(20) [primary key, unique]
+  id_card varchar(20) [not null, unique]
+  first_name varchar(50) [not null]
+  last_name varchar(50) [not null]
+  phone varchar(20) [unique]
+  gender char(1)
+  birth_date date
+  email varchar(70) [unique]
+  status integer [default: 1]
+  marital_status integer
+  dominant_hand integer
+  birth_place varchar(100)
+  home_address varchar(255)
+  education_level varchar(50)
+  hire_date date
+  office_phone varchar(20)
+  management_id integer
+  job_title_id integer
+  occupation_id integer
+  image_url varchar(255)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table state {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+}
+
+Table city {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  state_id integer
+}
+
+Table parish {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  city_id integer
+}
+
+Table location {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  parish_id integer
+}
+
+Table accident {
+  id integer [primary key, increment, unique]
+  accident_date date [not null]
+  accident_time time [not null]
+  description text
+  management_id integer
+  inpsasel_file_number varchar(20) [unique]
+  status integer [default: 1]
+  facility_id integer
+  accident_type_id integer
+  period_id integer
+  magnitude_id integer
+  user_id integer
+  damage_agent_id integer
+  contact_type_id integer
+  custom_address_details varchar(255)
+  medical_center_name varchar(150)
+  medical_center_id integer
+  medical_center_address varchar(255)
+  medical_observations text
+  global_observations text
+  process_status_id integer [default: 1]
+  parish_id integer
+  activity text
+  work_type varchar(50)
+  hazard_code varchar(50)
+  contact_exposure_code varchar(50)
+  affectation_class_code varchar(50)
+  affectation_subject_code varchar(50)
+  assets_process_affectation varchar(50)
+  accident_control_number varchar(50)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table accident_type {
+  id integer [primary key, increment, unique]
+  code varchar(50)
+  name varchar(100) [not null]
+  description varchar(100)
+  parent_id integer
+}
+
+Table magnitude {
+  id integer [primary key, increment, unique]
+  value integer [not null]
+  description varchar(50)
+}
+
+Table period {
+  id integer [primary key, increment, unique]
+  annuality integer [not null]
+}
+
+Table file_documents {
+  id integer [primary key, increment, unique]
+  name varchar(20) [not null]
+  description varchar(50)
+}
+
+Table accident_document_check {
+  id integer [primary key, increment, unique]
+  accident_id integer
+  document_id integer
+  delivered tinyint(1) [default: false]
+  received_date date
+  observation varchar(200)
+}
+
+Table accident_affectation_detail {
+  id integer [primary key, increment, unique]
+  accident_id integer
+  affectation_id integer
+  affectation_subject_id integer
+  magnitude_id integer
+}
+
+Table affectation_subject {
+  id integer [primary key, increment, unique]
+  code varchar(50) [not null]
+  name varchar(50) [not null]
+  description varchar(100)
+  parent_id integer
+}
+
+Table affectation {
+  id integer [primary key, increment, unique]
+  code varchar(50) [not null]
+  name varchar(50) [not null]
+  description varchar(100)
+  parent_id integer
+}
+
+Table contact_type {
+  id integer [primary key, increment, unique]
+  code varchar(50)
+  name varchar(50) [not null]
+  description varchar(100)
+  parent_id integer
+}
+
+Table damage_agent {
+  id integer [primary key, increment, unique]
+  code varchar(50)
+  name varchar(50) [not null]
+  description varchar(100)
+  parent_id integer
+}
+
+Table employee_accident {
+  id integer [primary key, increment, unique]
+  accident_id integer
+  employee_id varchar(20)
+  injury_type_id integer
+  rest_days integer
+  magnitude_id integer
+  affected_area varchar(50)
+  injury_nature varchar(50)
+  injury_level varchar(50)
+  injury_consequence varchar(50)
+}
+
+Table injury_type {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table accident_witness {
+  id integer [primary key, increment]
+  accident_id integer [not null]
+  name varchar(150) [not null]
+  id_card varchar(20)
+  phone varchar(20)
+}
+
+Table management {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  description text
+}
+
+Table medical_center {
+  id integer [primary key, increment, unique]
+  name varchar(150) [not null]
+  address varchar(255)
+  parish_id integer
+}
+
+Table brand {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table model {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+  brand_id integer
+}
+
+Table vehicle_type {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table vehicle {
+  id integer [unique]
+  plate varchar(255) [primary key, unique]
+  model_id integer
+  vehicle_type_id integer
+  color varchar(30)
+  year integer
+  facility_id integer
+}
+
+Table vehicle_image {
+  id integer [primary key, increment]
+  plate_id varchar(255) [not null]
+  image_url varchar(255) [not null]
+}
+
+Table vehicle_accessory {
+  id integer [primary key, increment, unique]
+  name varchar(30) [not null]
+}
+
+Table inspection_status {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table inspection {
+  id integer [primary key, increment, unique]
+  date date [not null]
+  coordinates varchar(50)
+  facility_id integer
+  employee_id varchar(10)
+  observations varchar(1000)
+  inspection_number varchar(20)
+  status_id integer
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table agent_type {
+  id integer [primary key, increment, unique]
+  name varchar(30) [not null]
+  description varchar(50)
+}
+
+Table extinguisher_inspection {
+  id integer [primary key, increment, unique]
+  inspection_id integer
+  extinguisher_code varchar(20)
+  inspection_date date
+  responsible_id varchar(10)
+  general_observations varchar(500)
+}
+
+Table extinguisher_detail {
+  id integer [primary key, increment, unique]
+  agent_type_id integer
+  extinguisher_inspection_id integer
+  extinguisher_number integer
+  capacity varchar(20)
+  recharge_date date
+  expiration_date date
+  general_status varchar(20)
+  observations varchar(100)
+}
+
+Table vehicle_inspection {
+  id integer [primary key, increment, unique]
+  plate_id varchar(255)
+  inspection_id integer
+  description varchar(150)
+}
+
+Table inspection_detail {
+  id integer [primary key, increment, unique]
+  vehicle_inspection_id integer
+  accessory_id integer
+  status tinyint(1) [default: true]
+  quantity integer [default: 1]
+  observations varchar(150)
+}
+
+Table installation_type {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  description varchar(200)
+}
+
+Table facility {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  coordinates varchar(500)
+  location_id integer
+  installation_type_id integer
+  voltage_level varchar(10)
+  status integer [default: 1]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table facility_image {
+  id integer [primary key, increment, unique]
+  image_url varchar(500) [not null]
+  facility_id integer [not null]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table protection_type {
+  id integer [primary key, increment, unique]
+  name varchar(50) [not null]
+  description varchar(100)
+}
+
+Table protection_equipment_category {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  protection_type_id integer
+  description varchar(100)
+}
+
+Table protection_equipment {
+  id integer [primary key, increment, unique]
+  name varchar(100) [not null]
+  category_id integer
+  total_quantity integer [default: 0]
+  operative_quantity integer [default: 0]
+  last_update date
+  description varchar(200)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table protection_inspection {
+  id integer [primary key, increment, unique]
+  inspection_id integer
+  responsible_id varchar(10)
+  observations varchar(500)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table protection_inspection_details {
+  id integer [primary key, increment, unique]
+  protection_inspection_id integer
+  category_id integer
+  total_checked integer
+  operative integer
+  observations varchar(200)
+}
+
+Table facility_inspection_code {
+  id integer [primary key, increment, unique]
+  facility_id integer
+  type varchar(2) [not null]
+  sequence integer [not null]
+  year integer [not null]
+  code varchar(50) [not null, unique]
+  date date
+  inspection_date date
+  memo_number varchar(100)
+  memo_date date
+  pdf_path varchar(255)
+  pdf_path_2 varchar(255)
+  notes text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Ref: users.role_id > role.id
+Ref: employee.management_id > management.id
+Ref: employee.job_title_id > job_title.id
+Ref: employee.occupation_id > occupation.id
+Ref: city.state_id > state.id
+Ref: parish.city_id > city.id
+Ref: location.parish_id > parish.id
+Ref: accident.facility_id > facility.id
+Ref: accident.accident_type_id > accident_type.id
+Ref: accident.period_id > period.id
+Ref: accident.magnitude_id > magnitude.id
+Ref: accident.user_id > users.id
+Ref: accident.damage_agent_id > damage_agent.id
+Ref: accident.contact_type_id > contact_type.id
+Ref: accident.process_status_id > inspection_status.id
+Ref: accident.management_id > management.id
+Ref: accident.parish_id > parish.id
+Ref: accident.medical_center_id > medical_center.id
+Ref: accident_type.parent_id > accident_type.id
+Ref: accident_document_check.document_id > file_documents.id
+Ref: accident_affectation_detail.affectation_id > affectation.id
+Ref: accident_affectation_detail.affectation_subject_id > affectation_subject.id
+Ref: accident_affectation_detail.magnitude_id > magnitude.id
+Ref: affectation_subject.parent_id > affectation_subject.id
+Ref: affectation.parent_id > affectation.id
+Ref: contact_type.parent_id > contact_type.id
+Ref: damage_agent.parent_id > damage_agent.id
+Ref: employee_accident.employee_id > employee.personal_number
+Ref: employee_accident.injury_type_id > injury_type.id
+Ref: employee_accident.magnitude_id > magnitude.id
+Ref: accident_witness.accident_id > accident.id
+Ref: medical_center.parish_id > parish.id
+Ref: model.brand_id > brand.id
+Ref: vehicle.model_id > model.id
+Ref: vehicle.vehicle_type_id > vehicle_type.id
+Ref: vehicle.facility_id > facility.id
+Ref: vehicle_image.plate_id > vehicle.plate
+Ref: inspection.facility_id > facility.id
+Ref: inspection.employee_id > employee.personal_number
+Ref: inspection.status_id > inspection_status.id
+Ref: extinguisher_inspection.inspection_id > inspection.id
+Ref: extinguisher_detail.extinguisher_inspection_id > extinguisher_inspection.id
+Ref: extinguisher_detail.agent_type_id > agent_type.id
+Ref: vehicle_inspection.inspection_id > inspection.id
+Ref: vehicle_inspection.plate_id > vehicle.plate
+Ref: inspection_detail.vehicle_inspection_id > vehicle_inspection.id
+Ref: inspection_detail.accessory_id > vehicle_accessory.id
+Ref: facility.location_id > location.id
+Ref: facility.installation_type_id > installation_type.id
+Ref: facility_image.facility_id > facility.id
+Ref: protection_equipment_category.protection_type_id > protection_type.id
+Ref: protection_equipment.category_id > protection_equipment_category.id
+Ref: protection_inspection.inspection_id > inspection.id
+Ref: protection_inspection.responsible_id > employee.personal_number
+Ref: protection_inspection_details.protection_inspection_id > protection_inspection.id
+Ref: protection_inspection_details.category_id > protection_equipment_category.id
+Ref: facility_inspection_code.facility_id > facility.id
