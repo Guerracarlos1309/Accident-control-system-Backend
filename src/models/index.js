@@ -47,6 +47,7 @@ const InspectionDetail = require('./InspectionDetail');
 const InstallationType = require('./InstallationType');
 const Facility = require('./Facility');
 const FacilityImage = require('./FacilityImage');
+const InspectionImage = require('./InspectionImage');
 const ProtectionType = require('./ProtectionType');
 const ProtectionEquipmentCategory = require('./ProtectionEquipmentCategory');
 const ProtectionEquipment = require('./ProtectionEquipment');
@@ -180,6 +181,9 @@ Inspection.belongsTo(Employee, { foreignKey: 'employee_id', targetKey: 'personal
 InspectionStatus.hasMany(Inspection, { foreignKey: 'status_id', as: 'inspections' });
 Inspection.belongsTo(InspectionStatus, { foreignKey: 'status_id', as: 'status' });
 
+Inspection.hasMany(InspectionImage, { foreignKey: 'inspection_id', as: 'images' });
+InspectionImage.belongsTo(Inspection, { foreignKey: 'inspection_id', as: 'inspection' });
+
 // Specialized Inspections
 Inspection.hasOne(ExtinguisherInspection, { foreignKey: 'inspection_id', as: 'extinguisherInspection' });
 ExtinguisherInspection.belongsTo(Inspection, { foreignKey: 'inspection_id' });
@@ -234,5 +238,5 @@ module.exports = {
   VehicleInspection, InspectionDetail,
   InstallationType, Facility, FacilityImage, ProtectionType, ProtectionEquipmentCategory, 
   ProtectionEquipment, ProtectionInspection, ProtectionInspectionDetails,
-  FacilityInspectionCode
+  FacilityInspectionCode, InspectionImage
 };

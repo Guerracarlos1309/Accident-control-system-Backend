@@ -28,6 +28,11 @@ const Facility = sequelize.define('Facility', {
     type: DataTypes.STRING(10),
     field: 'voltage_level'
   },
+  referencePoint: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    field: 'reference_point'
+  },
   status: {
     type: DataTypes.INTEGER,
     defaultValue: 1 // 1: Active, 0: Inactive

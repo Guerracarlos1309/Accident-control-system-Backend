@@ -95,6 +95,11 @@ const Employee = sequelize.define('Employee', {
       type: DataTypes.STRING(255),
       allowNull: true,
       field: 'image_url'
+    },
+    referencePoint: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'reference_point'
     }
   }, {
     tableName: 'employee',

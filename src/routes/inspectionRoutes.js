@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const inspectionController = require('../controllers/inspectionController');
 const { protect } = require('../middlewares/authMiddleware');
+const uploadInspectionImage = require('../middlewares/uploadInspectionImage');
 
 // All inspection routes are protected by JWT
 router.use(protect);
@@ -22,13 +23,13 @@ router.get('/:id', inspectionController.getInspectionById);
  * @route   POST /api/inspections
  * @desc    Create a new complex inspection record (General, Extinguisher, Vehicle)
  */
-router.post('/', inspectionController.createInspection);
+router.post('/', uploadInspectionImage.array('images', 10), inspectionController.createInspection);
 
 /**
  * @route   PUT /api/inspections/:id
  * @desc    Update an inspection report
  */
-router.put('/:id', inspectionController.updateInspection);
+router.put('/:id', uploadInspectionImage.array('images', 10), inspectionController.updateInspection);
 
 /**
  * @route   DELETE /api/inspections/:id

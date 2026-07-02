@@ -16,6 +16,7 @@ const {
   ProtectionInspection,
   ProtectionInspectionDetails,
   ProtectionEquipmentCategory,
+  InspectionImage,
   sequelize,
 } = require("../models");
 
@@ -36,6 +37,7 @@ exports.getAllInspections = async (req, res, next) => {
         { model: VehicleInspection, as: "vehicleInspection" },
         { model: ExtinguisherInspection, as: "extinguisherInspection" },
         { model: ProtectionInspection, as: "protectionInspection" },
+        { model: InspectionImage, as: "images" },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -61,6 +63,7 @@ exports.getInspectionById = async (req, res, next) => {
         },
         { model: Employee, as: "inspector" },
         { model: InspectionStatus, as: "status" },
+        { model: InspectionImage, as: "images" },
         {
           model: ExtinguisherInspection,
           as: "extinguisherInspection",
@@ -125,7 +128,18 @@ exports.getInspectionById = async (req, res, next) => {
 exports.createInspection = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
-    const { extinguisherData, vehicleData, protectionData, ...inspectionData } = req.body;
+    let { extinguisherData, vehicleData, protectionData, ...inspectionData } = req.body;
+
+    // Deserializar JSON si viene en formato string (usado en multipart/form-data)
+    if (typeof extinguisherData === "string" && extinguisherData) {
+      try { extinguisherData = JSON.parse(extinguisherData); } catch (e) { console.error("Error parseando extinguisherData:", e); }
+    }
+    if (typeof vehicleData === "string" && vehicleData) {
+      try { vehicleData = JSON.parse(vehicleData); } catch (e) { console.error("Error parseando vehicleData:", e); }
+    }
+    if (typeof protectionData === "string" && protectionData) {
+      try { protectionData = JSON.parse(protectionData); } catch (e) { console.error("Error parseando protectionData:", e); }
+    }
 
     // 1. Create the base inspection entry
     const { inspectorId, ...otherInspectionData } = inspectionData;
@@ -205,6 +219,20 @@ exports.createInspection = async (req, res, next) => {
       }
     }
 
+    // 5. Guardar fotos de la inspección si se subieron archivos
+    if (req.files && req.files.length > 0) {
+      const imagePromises = req.files.map((file) => {
+        return InspectionImage.create(
+          {
+            imageUrl: `/uploads/inspections/${file.filename}`,
+            inspectionId: newInspection.id,
+          },
+          { transaction: t }
+        );
+      });
+      await Promise.all(imagePromises);
+    }
+
     await t.commit();
     res.status(201).json(newInspection);
   } catch (error) {
@@ -220,7 +248,18 @@ exports.updateInspection = async (req, res, next) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const { extinguisherData, vehicleData, protectionData, ...inspectionData } = req.body;
+    let { extinguisherData, vehicleData, protectionData, deletedImageIds, ...inspectionData } = req.body;
+
+    // Deserializar JSON si viene en formato string (usado en multipart/form-data)
+    if (typeof extinguisherData === "string" && extinguisherData) {
+      try { extinguisherData = JSON.parse(extinguisherData); } catch (e) { console.error("Error parseando extinguisherData:", e); }
+    }
+    if (typeof vehicleData === "string" && vehicleData) {
+      try { vehicleData = JSON.parse(vehicleData); } catch (e) { console.error("Error parseando vehicleData:", e); }
+    }
+    if (typeof protectionData === "string" && protectionData) {
+      try { protectionData = JSON.parse(protectionData); } catch (e) { console.error("Error parseando protectionData:", e); }
+    }
 
     const inspection = await Inspection.findByPk(id);
     if (!inspection) {
@@ -300,6 +339,34 @@ exports.updateInspection = async (req, res, next) => {
           { transaction: t },
         );
       }
+    }
+
+    // 5. Eliminar imágenes desvinculadas si aplica
+    if (deletedImageIds) {
+      let idsToDelete = deletedImageIds;
+      if (typeof idsToDelete === "string") {
+        try { idsToDelete = JSON.parse(idsToDelete); } catch (e) { idsToDelete = [idsToDelete]; }
+      }
+      if (Array.isArray(idsToDelete) && idsToDelete.length > 0) {
+        await InspectionImage.destroy({
+          where: { id: idsToDelete, inspectionId: id },
+          transaction: t
+        });
+      }
+    }
+
+    // 6. Guardar nuevas imágenes si aplica
+    if (req.files && req.files.length > 0) {
+      const imagePromises = req.files.map((file) => {
+        return InspectionImage.create(
+          {
+            imageUrl: `/uploads/inspections/${file.filename}`,
+            inspectionId: id,
+          },
+          { transaction: t }
+        );
+      });
+      await Promise.all(imagePromises);
     }
 
     await t.commit();

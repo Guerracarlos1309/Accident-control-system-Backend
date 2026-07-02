@@ -107,7 +107,8 @@ exports.createFacility = async (req, res, next) => {
       coordinates: otherData.coordinates,
       installationTypeId: otherData.installationTypeId,
       voltageLevel,
-      locationId
+      locationId,
+      referencePoint: otherData.referencePoint
     });
 
     // Handle image uploads
@@ -184,6 +185,7 @@ exports.updateFacility = async (req, res, next) => {
       installationTypeId: otherData.installationTypeId,
       voltageLevel,
       locationId,
+      referencePoint: otherData.referencePoint,
       status: req.body.status !== undefined ? req.body.status : facility.status
     };
 
