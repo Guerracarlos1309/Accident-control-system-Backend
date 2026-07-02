@@ -245,7 +245,24 @@ exports.downloadAccidentsListReport = async (req, res, next) => {
         { model: AccidentType, as: "type" },
         { model: Period, as: "period" },
         { model: InspectionStatus, as: "processStatus" },
-        { model: Management, as: "management" }
+        { model: Management, as: "management" },
+        { model: Magnitude, as: "magnitude" },
+        {
+          model: EmployeeAccident,
+          as: "involvedEmployees",
+          include: [{ model: Employee, as: "employee" }]
+        },
+        {
+          model: Parish,
+          as: "parish",
+          include: [
+            {
+              model: City,
+              as: "city",
+              include: [{ model: State, as: "state" }]
+            }
+          ]
+        }
       ],
       order: [["id", "DESC"]],
     });
@@ -308,9 +325,9 @@ exports.downloadCustomReport = async (req, res, next) => {
       managementId, 
       facilityId, 
       accidentTypeId, 
-      processStatusId, 
+      magnitude,
       inspectionType, 
-      statusId,
+      isScheduled,
       preview,
       ids
     } = req.query;
@@ -350,8 +367,9 @@ exports.downloadCustomReport = async (req, res, next) => {
         if (accidentTypeId) {
           whereClause.accidentTypeId = accidentTypeId;
         }
-        if (processStatusId) {
-          whereClause.processStatusId = processStatusId;
+        if (magnitude) {
+          // Filter by magnitude name via association
+          // We'll do a post-filter after the query since magnitude is a relation
         }
       }
 
@@ -366,17 +384,44 @@ exports.downloadCustomReport = async (req, res, next) => {
           { model: AccidentType, as: "type" },
           { model: Period, as: "period" },
           { model: InspectionStatus, as: "processStatus" },
-          { model: Management, as: "management" }
+          { model: Management, as: "management" },
+          { model: Magnitude, as: "magnitude" },
+          {
+            model: EmployeeAccident,
+            as: "involvedEmployees",
+            include: [{ model: Employee, as: "employee" }]
+          },
+          {
+            model: Parish,
+            as: "parish",
+            include: [
+              {
+                model: City,
+                as: "city",
+                include: [{ model: State, as: "state" }]
+              }
+            ]
+          }
         ],
         order: [["accidentDate", "DESC"], ["id", "DESC"]],
       });
 
+      let filteredAccidents = accidents;
+      if (magnitude) {
+        filteredAccidents = accidents.filter((acc) => {
+          const magName = acc.magnitude
+            ? (acc.magnitude.name || acc.magnitude.description || "")
+            : "";
+          return magName.toLowerCase() === magnitude.toLowerCase();
+        });
+      }
+
       if (preview === "true") {
-        return res.json(accidents);
+        return res.json(filteredAccidents);
       }
 
       const columns = req.query.columns ? req.query.columns.split(",") : null;
-      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents, columns);
+      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(filteredAccidents, columns);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_accidentes.pdf");
       return res.send(pdfBuffer);
@@ -393,8 +438,8 @@ exports.downloadCustomReport = async (req, res, next) => {
         if (facilityId) {
           whereClause.facilityId = facilityId;
         }
-        if (statusId) {
-          whereClause.statusId = statusId;
+        if (isScheduled !== undefined && isScheduled !== "") {
+          whereClause.isScheduled = isScheduled === "true";
         }
       }
 

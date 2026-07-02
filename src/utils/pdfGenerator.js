@@ -1507,9 +1507,11 @@ class PdfGenerator {
         { key: "accidentDate", label: "FECHA", weight: 60 },
         { key: "accidentTime", label: "HORA", weight: 50 },
         { key: "accidentType", label: "TIPO ACCIDENTE", weight: 110 },
+        { key: "magnitude", label: "MAGNITUD", weight: 80 },
         { key: "facility", label: "INSTALACIÓN / DIRECCIÓN", weight: 120 },
+        { key: "locationDetail", label: "DETALLE UBICACIÓN", weight: 130 },
         { key: "management", label: "GERENCIA RESPONSABLE", weight: 120 },
-        { key: "status", label: "ESTATUS", weight: 60 },
+        { key: "personnel", label: "PERSONAL AFECTADO", weight: 140 },
         { key: "description", label: "DESCRIPCIÓN", weight: 140 },
         { key: "medicalCenterName", label: "CENTRO MÉDICO", weight: 120 },
         { key: "medicalObservations", label: "OBS. MÉDICAS", weight: 120 },
@@ -1523,41 +1525,120 @@ class PdfGenerator {
       }
       if (selectedCols.length === 0) selectedCols = allCols;
 
-      const isSelected = (key) => selectedCols.some((c) => c.key === key);
+      // --- Build summary stats ---
+      const typeCount = {};
+      const magnitudeCount = {};
+      accidents.forEach((acc) => {
+        const typeName = acc.type ? acc.type.name : "Sin clasificar";
+        typeCount[typeName] = (typeCount[typeName] || 0) + 1;
 
-      // Stats block
+        const magName = acc.magnitude
+          ? acc.magnitude.name || acc.magnitude.description || "Sin magnitud"
+          : "Sin magnitud";
+        magnitudeCount[magName] = (magnitudeCount[magName] || 0) + 1;
+      });
+
+      const typeEntries = Object.entries(typeCount).sort((a, b) => b[1] - a[1]);
+      const magEntries = Object.entries(magnitudeCount).sort((a, b) => b[1] - a[1]);
+
+      // Calculate block height dynamically
+      // Header row + type rows + separator + magnitude rows + padding
+      const rowH = 14;
+      const blockPadding = 10;
+      const totalRows = 1 + typeEntries.length + 1 + magEntries.length;
+      const blockHeight = blockPadding * 2 + totalRows * rowH + 8;
+
       const statsY = doc.y;
-      doc.rect(50, statsY, doc.page.width - 100, 32).fill("#FDF8F8");
+
+      // Background + border
+      doc.rect(50, statsY, doc.page.width - 100, blockHeight).fill("#F8FAFF");
       doc
-        .rect(50, statsY, doc.page.width - 100, 32)
+        .rect(50, statsY, doc.page.width - 100, blockHeight)
         .lineWidth(0.5)
-        .strokeColor("#F2CFCF")
+        .strokeColor("#C8D8EE")
         .stroke();
+      // Blue left accent bar
+      doc.rect(50, statsY, 4, blockHeight).fill("#005C9E");
+
+      let sy = statsY + blockPadding;
+
+      // Section title
       doc
         .font("Helvetica-Bold")
         .fontSize(8)
-        .fillColor("#E30613")
-        .text("ESTADÍSTICAS DEL REGISTRO", 65, statsY + 12);
-      doc
-        .font("Helvetica")
-        .fontSize(8)
-        .fillColor("#333333")
-        .text(
-          `Total Accidentes: ${accidents.length} incidentes registrados`,
-          215,
-          statsY + 12,
-        );
-      doc
-        .font("Helvetica")
-        .fontSize(8)
-        .text(
-          `Fecha: ${new Date().toLocaleDateString("es-ES")}`,
-          doc.page.width - 200,
-          statsY + 12,
-          { align: "right", width: 140 },
-        );
+        .fillColor("#005C9E")
+        .text("RESUMEN ESTADÍSTICO DEL REPORTE", 62, sy);
+      sy += rowH + 4;
 
-      doc.y = statsY + 45;
+      // Draw a thin divider
+      doc
+        .moveTo(62, sy - 4)
+        .lineTo(doc.page.width - 62, sy - 4)
+        .lineWidth(0.3)
+        .strokeColor("#C8D8EE")
+        .stroke();
+
+      const colW = (doc.page.width - 100 - 12) / 2; // two columns
+      const col1X = 62;
+      const col2X = col1X + colW + 10;
+
+      // --- Column 1: By Type ---
+      let c1Y = sy;
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .fillColor("#333333")
+        .text("POR TIPO DE ACCIDENTE:", col1X, c1Y);
+      c1Y += rowH;
+
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(8.5)
+        .fillColor("#E30613")
+        .text(`Total: ${accidents.length} accidente${accidents.length !== 1 ? "s" : ""}`, col1X, c1Y);
+      c1Y += rowH;
+
+      typeEntries.forEach(([name, count]) => {
+        doc
+          .font("Helvetica")
+          .fontSize(7.5)
+          .fillColor("#333333")
+          .text(`• ${name}:`, col1X, c1Y, { continued: true })
+          .font("Helvetica-Bold")
+          .text(` ${count}`, { continued: false });
+        c1Y += rowH;
+      });
+
+      // --- Column 2: By Magnitude ---
+      let c2Y = sy;
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(7.5)
+        .fillColor("#333333")
+        .text("POR MAGNITUD:", col2X, c2Y);
+      c2Y += rowH;
+
+      magEntries.forEach(([name, count]) => {
+        // Color-code magnitudes
+        let magColor = "#333333";
+        const nameLower = name.toLowerCase();
+        if (nameLower.includes("mortal")) magColor = "#7B0000";
+        else if (nameLower.includes("muy grave") || nameLower.includes("grave")) magColor = "#C0392B";
+        else if (nameLower.includes("leve")) magColor = "#E67E22";
+
+        doc
+          .font("Helvetica")
+          .fontSize(7.5)
+          .fillColor(magColor)
+          .text(`• ${name}:`, col2X, c2Y, { continued: true })
+          .font("Helvetica-Bold")
+          .text(` ${count}`, { continued: false });
+        c2Y += rowH;
+      });
+
+      doc.y = statsY + blockHeight + 12;
+
+      const isSelected = (key) => selectedCols.some((c) => c.key === key);
 
       accidents.forEach((acc) => {
         const cardFields = [];
@@ -1567,16 +1648,75 @@ class PdfGenerator {
             label: "Tipo Incidente:",
             value: acc.type ? acc.type.name : "-",
           });
-        if (isSelected("facility"))
+        if (isSelected("magnitude"))
           cardFields.push({
-            label: "Instalación:",
-            value: acc.facility ? acc.facility.name : "-",
+            label: "Magnitud:",
+            value: acc.magnitude
+              ? acc.magnitude.name || acc.magnitude.description || "-"
+              : "-",
           });
+        if (isSelected("facility")) {
+          // If accident didn't happen at a registered facility, show parish or customAddressDetails
+          let locationValue = acc.facility ? acc.facility.name : "-";
+          if (!acc.facilityId) {
+            if (acc.parish) {
+              const parts = [];
+              if (acc.parish.name) parts.push(acc.parish.name);
+              if (acc.parish.city && acc.parish.city.name) parts.push(acc.parish.city.name);
+              if (acc.parish.city && acc.parish.city.state && acc.parish.city.state.name) parts.push(acc.parish.city.state.name);
+              locationValue = parts.join(", ") || "-";
+            } else {
+              locationValue = acc.customAddressDetails || "Fuera de sede registrada";
+            }
+          }
+          cardFields.push({
+            label: "Instalación / Lugar:",
+            value: locationValue,
+          });
+        }
+        if (isSelected("locationDetail")) {
+          // Show detail: custom address or parish breakdown
+          let detailValue = acc.customAddressDetails || "-";
+          if (!detailValue || detailValue === "-") {
+            if (acc.parish) {
+              const parts = [];
+              if (acc.parish.name) parts.push(`Parroquia: ${acc.parish.name}`);
+              if (acc.parish.city && acc.parish.city.name) parts.push(`Ciudad: ${acc.parish.city.name}`);
+              if (acc.parish.city && acc.parish.city.state && acc.parish.city.state.name) parts.push(`Estado: ${acc.parish.city.state.name}`);
+              detailValue = parts.join(" | ") || "-";
+            } else if (acc.facility && acc.facility.location && acc.facility.location.name) {
+              detailValue = `Sede: ${acc.facility.location.name}`;
+            }
+          }
+          cardFields.push({
+            label: "Detalle Ubicación:",
+            value: detailValue,
+          });
+        }
         if (isSelected("management"))
           cardFields.push({
             label: "Gerencia Resp.:",
             value: acc.management ? acc.management.name : "-",
           });
+        if (isSelected("personnel")) {
+          const employees = acc.involvedEmployees || [];
+          let personnelValue = "-";
+          if (employees.length > 0) {
+            personnelValue = employees
+              .map((ie) => {
+                const emp = ie.employee;
+                if (emp) {
+                  return `${emp.lastName || ""}, ${emp.firstName || ""} (C.I: ${emp.idCard || "N/E"})`;
+                }
+                return `Ficha: ${ie.employeePersonalNumber || "N/E"}`;
+              })
+              .join(" | ");
+          }
+          cardFields.push({
+            label: "Personal Afectado:",
+            value: personnelValue,
+          });
+        }
         if (isSelected("status")) {
           const statusText = acc.processStatus
             ? acc.processStatus.name

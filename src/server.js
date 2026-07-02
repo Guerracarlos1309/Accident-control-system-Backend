@@ -31,6 +31,24 @@ async function startServer() {
         });
         console.log('Successfully added memo_date column.');
       }
+
+      // Check inspection table columns for scheduled fields
+      const inspectionTableDefinition = await queryInterface.describeTable('inspection');
+      if (!inspectionTableDefinition.is_scheduled) {
+        await queryInterface.addColumn('inspection', 'is_scheduled', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+        console.log('Successfully added is_scheduled column to inspection table.');
+      }
+      if (!inspectionTableDefinition.scheduled_date) {
+        await queryInterface.addColumn('inspection', 'scheduled_date', {
+          type: DataTypes.DATEONLY,
+          allowNull: true
+        });
+        console.log('Successfully added scheduled_date column to inspection table.');
+      }
     } catch (columnError) {
       console.warn('Could not inspect/add columns:', columnError.message);
     }

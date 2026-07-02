@@ -36,6 +36,17 @@ const Inspection = sequelize.define('Inspection', {
   statusId: {
     type: DataTypes.INTEGER,
     field: 'status_id'
+  },
+  isScheduled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'is_scheduled'
+  },
+  scheduledDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    field: 'scheduled_date'
   }
 }, {
   tableName: 'inspection',
