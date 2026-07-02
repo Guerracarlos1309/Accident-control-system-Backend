@@ -264,7 +264,7 @@ exports.downloadAccidentsListReport = async (req, res, next) => {
           ]
         }
       ],
-      order: [["id", "DESC"]],
+      order: [["accidentDate", "ASC"], ["id", "ASC"]],
     });
 
     const columns = req.query.columns ? req.query.columns.split(",") : null;
@@ -297,7 +297,7 @@ exports.downloadInspectionsListReport = async (req, res, next) => {
         { model: ExtinguisherInspection, as: "extinguisherInspection" },
         { model: ProtectionInspection, as: "protectionInspection" },
       ],
-      order: [["created_at", "DESC"]],
+      order: [["date", "ASC"], ["created_at", "ASC"]],
     });
 
     const columns = req.query.columns ? req.query.columns.split(",") : null;
@@ -325,7 +325,7 @@ exports.downloadCustomReport = async (req, res, next) => {
       managementId, 
       facilityId, 
       accidentTypeId, 
-      magnitude,
+      magnitudeId,
       inspectionType, 
       isScheduled,
       preview,
@@ -367,9 +367,8 @@ exports.downloadCustomReport = async (req, res, next) => {
         if (accidentTypeId) {
           whereClause.accidentTypeId = accidentTypeId;
         }
-        if (magnitude) {
-          // Filter by magnitude name via association
-          // We'll do a post-filter after the query since magnitude is a relation
+        if (magnitudeId) {
+          whereClause.magnitudeId = magnitudeId;
         }
       }
 
@@ -403,25 +402,15 @@ exports.downloadCustomReport = async (req, res, next) => {
             ]
           }
         ],
-        order: [["accidentDate", "DESC"], ["id", "DESC"]],
+        order: [["accidentDate", "ASC"], ["id", "ASC"]],
       });
 
-      let filteredAccidents = accidents;
-      if (magnitude) {
-        filteredAccidents = accidents.filter((acc) => {
-          const magName = acc.magnitude
-            ? (acc.magnitude.name || acc.magnitude.description || "")
-            : "";
-          return magName.toLowerCase() === magnitude.toLowerCase();
-        });
-      }
-
       if (preview === "true") {
-        return res.json(filteredAccidents);
+        return res.json(accidents);
       }
 
       const columns = req.query.columns ? req.query.columns.split(",") : null;
-      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(filteredAccidents, columns);
+      const pdfBuffer = await PdfGenerator.generateAccidentsListPdf(accidents, columns);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=reporte_personalizado_accidentes.pdf");
       return res.send(pdfBuffer);
@@ -471,7 +460,7 @@ exports.downloadCustomReport = async (req, res, next) => {
       const inspections = await Inspection.findAll({
         where: whereClause,
         include: includeArray,
-        order: [["date", "DESC"], ["created_at", "DESC"]],
+        order: [["date", "ASC"], ["created_at", "ASC"]],
       });
 
       if (preview === "true") {
