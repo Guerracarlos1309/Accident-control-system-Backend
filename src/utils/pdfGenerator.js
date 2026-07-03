@@ -816,33 +816,110 @@ class PdfGenerator {
 
       const dateFormatted = this.formatDate(inspection.date);
       const inspectorStr = inspection.inspector
-        ? `${inspection.inspector.lastName}, ${inspection.inspector.firstName} (Ficha: ${inspection.inspector.personalNumber})`
+        ? `${inspection.inspector.lastName}, ${inspection.inspector.firstName}  (Ficha: ${inspection.inspector.personalNumber})`
         : "-";
       const facilityStr = inspection.facility
-        ? `${inspection.facility.name} (${inspection.facility.location ? inspection.facility.location.name : ""})`
+        ? `${inspection.facility.name}${inspection.facility.location ? " — " + inspection.facility.location.name : ""}`
         : "-";
+      const isScheduled = inspection.isScheduled === true || inspection.isScheduled === 1;
+      const scheduledLabel = isScheduled ? "PROGRAMADA" : "NO PROGRAMADA";
 
-      this.drawDataRow(
-        doc,
-        "Código Inspección:",
-        inspection.inspectionNumber || `ID: ${inspection.id}`,
-        50,
-        startY,
+      // --- Draw a bordered info-card for the generalidades ---
+      const cardX = 50;
+      const cardW = doc.page.width - 100;
+      const ROW_H = 18;   // height of each data row
+      const COL_LABEL_W = 120;
+      const COL1_X = cardX + 8;
+      const COL2_X = cardX + cardW / 2 + 4;
+      const colHalfW = cardW / 2 - 16;
+
+      // Helper to draw a single info row spanning the full card width
+      const drawFullRow = (label, value, y, bgColor) => {
+        if (bgColor) doc.rect(cardX, y, cardW, ROW_H).fill(bgColor);
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555")
+          .text(label, COL1_X, y + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111")
+          .text(value || "-", COL1_X + COL_LABEL_W, y + 5, { width: cardW - COL_LABEL_W - 16 });
+      };
+
+      // Helper to draw a half-row (left or right side)
+      const drawHalfRow = (label, value, x, y) => {
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555")
+          .text(label, x, y + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111")
+          .text(value || "-", x + COL_LABEL_W, y + 5, { width: colHalfW - COL_LABEL_W });
+      };
+
+      // Row heights for the rows that may wrap
+      const inspH = Math.max(
+        doc.font("Helvetica").fontSize(8).heightOfString(inspectorStr, { width: colHalfW - COL_LABEL_W }),
+        8
       );
-      this.drawDataRow(doc, "Fecha Ejecución:", dateFormatted, 50, startY + 14);
-      this.drawDataRow(doc, "Instalación:", facilityStr, 50, startY + 28, 250);
-
-      this.drawDataRow(doc, "Inspector:", inspectorStr, 315, startY, 230);
-      this.drawDataRow(
-        doc,
-        "Estatus:",
-        inspection.status ? inspection.status.name : "REGISTRADO",
-        315,
-        startY + 28,
-        230,
+      const facilH = Math.max(
+        doc.font("Helvetica").fontSize(8).heightOfString(facilityStr, { width: cardW - COL_LABEL_W - 16 }),
+        8
       );
 
-      doc.y = startY + 56;
+      // Calculate row heights: rows 1-3 side-by-side, row 4 facility full width
+      const r1H = Math.max(ROW_H, inspH + 10);
+      const r2H = ROW_H;
+      const r3H = ROW_H;
+      const r4H = Math.max(ROW_H, facilH + 10);
+      const r5H = isScheduled && inspection.scheduledDate ? ROW_H : 0;
+      const totalCardH = r1H + r2H + r3H + r4H + r5H;
+
+      // Draw card outer border
+      doc.rect(cardX, startY, cardW, totalCardH).lineWidth(0.5).strokeColor("#D1D5DB").stroke();
+
+      // Row 1: Código (left) | Inspector (right)
+      doc.rect(cardX, startY, cardW, r1H).fill("#F9FAFB");
+      // vertical divider
+      doc.moveTo(cardX + cardW / 2, startY).lineTo(cardX + cardW / 2, startY + r1H)
+        .lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+      drawHalfRow("Código Inspección:", inspection.inspectionNumber || `ID: ${inspection.id}`, COL1_X, startY);
+      drawHalfRow("Inspector:", inspectorStr, COL2_X, startY);
+
+      // horizontal divider
+      const y2 = startY + r1H;
+      doc.moveTo(cardX, y2).lineTo(cardX + cardW, y2).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+
+      // Row 2: Fecha Ejecución (left) | Estatus (right)
+      doc.moveTo(cardX + cardW / 2, y2).lineTo(cardX + cardW / 2, y2 + r2H)
+        .lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+      drawHalfRow("Fecha Ejecución:", dateFormatted, COL1_X, y2);
+      drawHalfRow("Estatus:", inspection.status ? inspection.status.name : "REGISTRADO", COL2_X, y2);
+
+      // horizontal divider
+      const y3 = y2 + r2H;
+      doc.moveTo(cardX, y3).lineTo(cardX + cardW, y3).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+
+      // Row 3: Modalidad (left) | (right empty or keep for future)
+      doc.moveTo(cardX + cardW / 2, y3).lineTo(cardX + cardW / 2, y3 + r3H)
+        .lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+      drawHalfRow("Modalidad:", scheduledLabel, COL1_X, y3);
+      // right side of row 3 empty
+
+      // horizontal divider
+      const y4 = y3 + r3H;
+      doc.moveTo(cardX, y4).lineTo(cardX + cardW, y4).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+
+      // Row 4: Instalación full width
+      doc.rect(cardX, y4, cardW, r4H).fill("#F9FAFB");
+      drawFullRow("Instalación:", facilityStr, y4, null);
+
+      // Row 5: Scheduled date (if applicable)
+      if (r5H > 0) {
+        const y5 = y4 + r4H;
+        doc.moveTo(cardX, y5).lineTo(cardX + cardW, y5).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.rect(cardX, y5, 4, r5H).fill("#005C9E");
+        doc.rect(cardX + 4, y5, cardW - 4, r5H).fill("#EEF6FF");
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#005C9E")
+          .text("Fecha Programada:", COL1_X, y5 + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#333333")
+          .text(this.formatDate(inspection.scheduledDate), COL1_X + COL_LABEL_W, y5 + 5);
+      }
+
+      doc.y = startY + totalCardH + 8;
 
       // Section 2: Observations
       this.drawSectionHeader(doc, "Diagnóstico y Observaciones de Campo");
@@ -1333,14 +1410,8 @@ class PdfGenerator {
           doc,
           "Control de Inventario de Equipos de Protección",
         );
-        const respStr = protInsp.responsible
-          ? `${protInsp.responsible.lastName}, ${protInsp.responsible.firstName}`
-          : `ID: ${protInsp.responsible_id}`;
 
-        const protY = doc.y;
-        this.drawDataRow(doc, "Responsable Almacén:", respStr, 50, protY, 490);
-
-        doc.y = protY + 20;
+        doc.y = doc.y + 4;
 
         const tableStartY = doc.y;
         doc.rect(50, tableStartY, doc.page.width - 100, 16).fill("#005C9E");
@@ -1359,7 +1430,24 @@ class PdfGenerator {
         doc.text("OBSERVACIONES DE DETALLE", 455, tableStartY + 4);
 
         doc.y = tableStartY + 16;
-        details.forEach((det, idx) => {
+
+        // Only show items that have at least one unit recorded
+        const filteredDetails = details.filter((det) => {
+          let buenos = det.operative !== undefined ? det.operative : 0;
+          let malos = det.totalChecked !== undefined ? det.totalChecked - det.operative : 0;
+          // Also check serialized observations
+          const obsRaw = det.observations || "";
+          if (obsRaw.includes("|")) {
+            obsRaw.split("|").forEach((part) => {
+              const [key, val] = part.split(":");
+              if (key === "B") buenos = parseInt(val) || 0;
+              else if (key === "M") malos = parseInt(val) || 0;
+            });
+          }
+          return (buenos + malos) > 0;
+        });
+
+        filteredDetails.forEach((det, idx) => {
           if (doc.y > doc.page.height - 65) {
             doc.addPage();
             this.drawHeader(doc, title);
@@ -1893,172 +1981,201 @@ class PdfGenerator {
 
       const isSelected = (key) => selectedCols.some((c) => c.key === key);
 
-      // Stats block
-      const statsY = doc.y;
-      doc.rect(50, statsY, doc.page.width - 100, 32).fill("#F4F7FA");
-      doc
-        .rect(50, statsY, doc.page.width - 100, 32)
-        .lineWidth(0.5)
-        .strokeColor("#CCD5E0")
-        .stroke();
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(8)
-        .fillColor("#005C9E")
-        .text("ESTADÍSTICAS DEL REGISTRO", 65, statsY + 12);
-      doc
-        .font("Helvetica")
-        .fontSize(8)
-        .fillColor("#333333")
-        .text(
-          `Total Inspecciones: ${inspections.length} informes registrados`,
-          215,
-          statsY + 12,
-        );
-      doc
-        .font("Helvetica")
-        .fontSize(8)
-        .text(
-          `Fecha: ${new Date().toLocaleDateString("es-ES")}`,
-          doc.page.width - 200,
-          statsY + 12,
-          { align: "right", width: 140 },
-        );
-      doc.y = statsY + 45;
+      // ─── Build summary stats ───────────────────────────────────────────────
+      const typeCount  = { "Extintores": 0, "Vehicular": 0, "Protección": 0, "Instalaciones": 0 };
+      const modalCount = { "Programada": 0, "No Programada": 0 };
 
       inspections.forEach((insp) => {
-        const cardFields = [];
+        if (insp.extinguisherInspection)      typeCount["Extintores"]++;
+        else if (insp.vehicleInspection)      typeCount["Vehicular"]++;
+        else if (insp.protectionInspection)   typeCount["Protección"]++;
+        else                                  typeCount["Instalaciones"]++;
 
-        let typeStr = "General";
-        if (insp.extinguisherInspection) typeStr = "Extintores";
-        else if (insp.vehicleInspection) typeStr = "Vehicular";
+        const sched = insp.isScheduled === true || insp.isScheduled === 1;
+        if (sched) modalCount["Programada"]++;
+        else       modalCount["No Programada"]++;
+      });
+
+      // Filter out zero-count entries
+      const typeEntries  = Object.entries(typeCount).filter(([, v]) => v > 0);
+      const modalEntries = Object.entries(modalCount).filter(([, v]) => v > 0);
+
+      const rowH        = 14;
+      const blockPad    = 10;
+      const totalRows   = 1 + typeEntries.length + 1 + modalEntries.length;
+      const blockHeight = blockPad * 2 + totalRows * rowH + 8;
+
+      const statsY = doc.y;
+      doc.rect(50, statsY, doc.page.width - 100, blockHeight).fill("#F4F8FF");
+      doc.rect(50, statsY, doc.page.width - 100, blockHeight)
+        .lineWidth(0.5).strokeColor("#C8D8EE").stroke();
+      doc.rect(50, statsY, 4, blockHeight).fill("#005C9E");
+
+      let sy = statsY + blockPad;
+
+      doc.font("Helvetica-Bold").fontSize(8).fillColor("#005C9E")
+        .text("RESUMEN ESTADÍSTICO DEL REPORTE", 62, sy);
+      sy += rowH + 4;
+
+      doc.moveTo(62, sy - 4).lineTo(doc.page.width - 62, sy - 4)
+        .lineWidth(0.3).strokeColor("#C8D8EE").stroke();
+
+      const colW  = (doc.page.width - 100 - 12) / 2;
+      const col1X = 62;
+      const col2X = col1X + colW + 10;
+
+      // Column 1: By Type
+      let c1Y = sy;
+      doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#333333")
+        .text("POR TIPO DE INSPECCIÓN:", col1X, c1Y);
+      c1Y += rowH;
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#E30613")
+        .text(`Total: ${inspections.length} inspección${inspections.length !== 1 ? "es" : ""}`, col1X, c1Y);
+      c1Y += rowH;
+      const typeColors = { "Extintores": "#E67E22", "Vehicular": "#2980B9", "Protección": "#8E44AD", "Instalaciones": "#27AE60" };
+      typeEntries.forEach(([name, count]) => {
+        doc.font("Helvetica").fontSize(7.5).fillColor(typeColors[name] || "#333333")
+          .text(`• ${name}:`, col1X, c1Y, { continued: true })
+          .font("Helvetica-Bold").text(` ${count}`, { continued: false });
+        c1Y += rowH;
+      });
+
+      // Column 2: By Modality
+      let c2Y = sy;
+      doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#333333")
+        .text("POR MODALIDAD:", col2X, c2Y);
+      c2Y += rowH;
+      const modalColors = { "Programada": "#005C9E", "No Programada": "#6B7280" };
+      modalEntries.forEach(([name, count]) => {
+        doc.font("Helvetica").fontSize(7.5).fillColor(modalColors[name] || "#333333")
+          .text(`• ${name}:`, col2X, c2Y, { continued: true })
+          .font("Helvetica-Bold").text(` ${count}`, { continued: false });
+        c2Y += rowH;
+      });
+
+      doc.y = statsY + blockHeight + 12;
+
+      // ── Inspection type colors and labels ────────────────────────────────
+      const TYPE_META = {
+        "Extintores":    { color: "#E67E22", bg: "#FEF3E2" },
+        "Vehicular":     { color: "#2980B9", bg: "#EBF5FB" },
+        "Protección":    { color: "#8E44AD", bg: "#F5EEF8" },
+        "Instalaciones": { color: "#27AE60", bg: "#EAFAF1" },
+      };
+
+      inspections.forEach((insp) => {
+        // Determine type
+        let typeStr = "Instalaciones";
+        if (insp.extinguisherInspection)    typeStr = "Extintores";
+        else if (insp.vehicleInspection)    typeStr = "Vehicular";
         else if (insp.protectionInspection) typeStr = "Protección";
 
-        if (isSelected("facility"))
-          cardFields.push({
-            label: "Instalación:",
-            value: insp.facility
-              ? `${insp.facility.name}${insp.facility.location ? " (" + insp.facility.location.name + ")" : ""}`
-              : "-",
-          });
-        if (isSelected("inspector"))
-          cardFields.push({
-            label: "Inspector:",
-            value: insp.inspector
-              ? `${insp.inspector.lastName}, ${insp.inspector.firstName}`
-              : "-",
-          });
-        if (isSelected("typeStatus"))
-          cardFields.push({
-            label: "Tipo Inspección:",
-            value: typeStr,
-            isType: true,
-          });
-        if (isSelected("status")) {
-          cardFields.push({
-            label: "Estatus:",
-            value: insp.status ? insp.status.name : "Pendiente",
-            isStatus: true,
-            statusId: insp.statusId,
-          });
-        }
-        if (isSelected("coordinates"))
-          cardFields.push({
-            label: "Coordenadas:",
-            value: insp.coordinates || "-",
-          });
-        if (isSelected("observations"))
-          cardFields.push({
-            label: "Observaciones:",
-            value: insp.observations || "-",
-          });
+        const meta       = TYPE_META[typeStr] || { color: "#333333", bg: "#F9FAFB" };
+        const dateStr    = this.formatDate(insp.date);
+        const codeVal    = insp.inspectionNumber || `ID: ${insp.id}`;
+        const facilityStr = insp.facility
+          ? `${insp.facility.name}${insp.facility.location ? " — " + insp.facility.location.name : ""}`
+          : "-";
+        const inspectorStr = insp.inspector
+          ? `${insp.inspector.lastName}, ${insp.inspector.firstName}`
+          : "-";
+        const isScheduled  = insp.isScheduled === true || insp.isScheduled === 1;
+        const modalStr     = isScheduled ? "PROGRAMADA" : "NO PROGRAMADA";
+        const statusStr    = insp.status ? insp.status.name : "Pendiente";
 
-        if (doc.y + 120 > doc.page.height - 65) {
+        // Gather optional extra fields based on column selection
+        const extraFields = [];
+        if (isSelected("coordinates") && insp.coordinates)
+          extraFields.push({ label: "Coordenadas:", value: insp.coordinates });
+        if (isSelected("observations") && insp.observations)
+          extraFields.push({ label: "Observaciones:", value: insp.observations });
+
+        // Estimate card height
+        const facilH = Math.max(
+          doc.font("Helvetica").fontSize(7.5).heightOfString(facilityStr, { width: 310 }), 9
+        );
+        const extraH = extraFields.reduce((acc, f) => {
+          return acc + Math.max(doc.font("Helvetica").fontSize(7.5).heightOfString(f.value, { width: 370 }), 9) + 6;
+        }, 0);
+        const cardH = 22 + 6 + Math.max(facilH, 9) + 8 + 18 + 18 + (extraH > 0 ? extraH + 4 : 0) + 6;
+
+        if (doc.y + cardH > doc.page.height - 65) {
           doc.addPage();
           this.drawHeader(doc, title);
         }
 
-        let rowY = doc.y;
+        const rowY  = doc.y;
+        const cardW = 495;
 
-        doc.rect(50, rowY, 495, 20).fill("#F2F5F8");
-        doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#005C9E");
-        const codeVal = insp.inspectionNumber || `ID: ${insp.id}`;
-        doc.text(String(codeVal).toUpperCase(), 55, rowY + 6);
+        // ── Card header: type badge (left) | code (center) | date (right) ──
+        const headerH = 22;
+        doc.rect(50, rowY, cardW, headerH).fill("#F2F5F8");
 
-        let headerRight = "";
-        if (isSelected("date")) {
-          const dateStr = this.formatDate(insp.date);
-          headerRight = `FECHA: ${dateStr}`;
-        }
-        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555");
-        doc.text(headerRight.trim(), 300, rowY + 6, {
-          width: 240,
-          align: "right",
+        // Type badge on the far left
+        const badgeW = 80;
+        doc.rect(50, rowY, badgeW, headerH).fill(meta.color);
+        doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#FFFFFF")
+          .text(typeStr.toUpperCase(), 50, rowY + 7, { width: badgeW, align: "center" });
+
+        // Inspection code
+        doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#005C9E")
+          .text(String(codeVal).toUpperCase(), 140, rowY + 6);
+
+        // Date on the right
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555")
+          .text(dateStr, 300, rowY + 7, { width: 240, align: "right" });
+
+        // Divider under header
+        doc.moveTo(50, rowY + headerH).lineTo(545, rowY + headerH)
+          .lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+
+        // ── Card body ──────────────────────────────────────────────────────
+        let cy = rowY + headerH + 6;
+
+        // Row: Instalación (full width, may wrap)
+        doc.font("Helvetica").fontSize(7.5).fillColor("#666666")
+          .text("Instalación:", 58, cy, { width: 100 });
+        doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#111111")
+          .text(facilityStr, 160, cy, { width: 375 });
+        cy = doc.y + 6;
+
+        // Row: Inspector (left half) | Modalidad (right half)
+        doc.font("Helvetica").fontSize(7.5).fillColor("#666666")
+          .text("Inspector:", 58, cy, { width: 100 });
+        doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#111111")
+          .text(inspectorStr, 160, cy, { width: 175 });
+
+        doc.font("Helvetica").fontSize(7.5).fillColor("#666666")
+          .text("Modalidad:", 345, cy, { width: 80 });
+        doc.font("Helvetica-Bold").fontSize(7.5)
+          .fillColor(isScheduled ? "#005C9E" : "#6B7280")
+          .text(modalStr, 425, cy, { width: 110 });
+        cy += 16;
+
+        // Row: Estatus (left half) | empty (right)
+        const statusColor = insp.statusId === 3 ? "#10B981" : insp.statusId === 2 ? "#F59E0B" : "#6B7280";
+        doc.font("Helvetica").fontSize(7.5).fillColor("#666666")
+          .text("Estatus:", 58, cy, { width: 100 });
+        doc.font("Helvetica-Bold").fontSize(7.5).fillColor(statusColor)
+          .text(statusStr, 160, cy, { width: 175 });
+        cy += 14;
+
+        // Extra optional fields
+        extraFields.forEach((f) => {
+          cy += 2;
+          doc.font("Helvetica").fontSize(7.5).fillColor("#666666")
+            .text(f.label, 58, cy, { width: 100 });
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#333333")
+            .text(f.value, 160, cy, { width: 375 });
+          cy = doc.y + 4;
         });
 
-        doc
-          .moveTo(50, rowY + 20)
-          .lineTo(545, rowY + 20)
-          .lineWidth(0.5)
-          .strokeColor("#E5E7EB")
-          .stroke();
+        cy += 4;
 
-        let currentY = rowY + 26;
-
-        cardFields.forEach((field) => {
-          if (currentY > doc.page.height - 75) {
-            doc
-              .rect(50, rowY, 495, currentY - rowY + 5)
-              .lineWidth(0.5)
-              .strokeColor("#E5E7EB")
-              .stroke();
-            doc.addPage();
-            this.drawHeader(doc, title);
-            rowY = doc.y;
-            currentY = rowY;
-            doc.rect(50, currentY, 495, 20).fill("#F2F5F8");
-            doc.font("Helvetica-Bold").fontSize(8).fillColor("#005C9E");
-            doc.text(`${codeVal} (CONTINUACIÓN)`, 55, currentY + 6);
-            doc
-              .moveTo(50, currentY + 20)
-              .lineTo(545, currentY + 20)
-              .lineWidth(0.5)
-              .strokeColor("#E5E7EB")
-              .stroke();
-            currentY += 26;
-          }
-
-          doc
-            .font("Helvetica")
-            .fontSize(7.5)
-            .fillColor("#666666")
-            .text(field.label, 55, currentY, { width: 115 });
-
-          if (field.isType) {
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#005C9E");
-          } else if (field.isStatus) {
-            const statusColor =
-              field.statusId === 3
-                ? "#10B981"
-                : field.statusId === 2
-                  ? "#F59E0B"
-                  : "#6B7280";
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor(statusColor);
-          } else {
-            doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#333333");
-          }
-
-          doc.text(String(field.value), 175, currentY, { width: 360 });
-          currentY = doc.y + 4;
-        });
-
-        const cardHeight = currentY - rowY;
-        doc
-          .rect(50, rowY, 495, cardHeight)
-          .lineWidth(0.5)
-          .strokeColor("#E5E7EB")
-          .stroke();
-        doc.y = rowY + cardHeight + 12;
+        // Card border
+        doc.rect(50, rowY, cardW, cy - rowY)
+          .lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.y = cy + 10;
       });
 
       this.drawFooter(doc);
