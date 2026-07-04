@@ -39,7 +39,8 @@ const {
   Parish,
   City,
   State,
-  MedicalCenter
+  MedicalCenter,
+  sequelize
 } = require("../models");
 const PdfGenerator = require("../utils/pdfGenerator");
 
