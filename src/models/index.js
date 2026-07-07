@@ -168,6 +168,10 @@ Vehicle.belongsTo(VehicleType, { foreignKey: 'vehicle_type_id', as: 'type' });
 Vehicle.belongsTo(Facility, { foreignKey: 'facility_id', as: 'facility' });
 Facility.hasMany(Vehicle, { foreignKey: 'facility_id', as: 'vehicles' });
 
+// Vehicle → Management (gerencia o cuadrilla asignada al vehículo)
+Vehicle.belongsTo(Management, { foreignKey: 'management_id', as: 'management' });
+Management.hasMany(Vehicle, { foreignKey: 'management_id', as: 'vehicles' });
+
 Vehicle.hasMany(VehicleImage, { foreignKey: 'plate_id', sourceKey: 'plate', as: 'images' });
 VehicleImage.belongsTo(Vehicle, { foreignKey: 'plate_id', targetKey: 'plate', as: 'vehicle' });
 

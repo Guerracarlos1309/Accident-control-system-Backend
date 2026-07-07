@@ -6,6 +6,7 @@ const {
   VehicleImage,
   VehicleAccessory,
   Facility,
+  Management,
 } = require("../models");
 
 /*
@@ -56,7 +57,8 @@ exports.getVehicles = async (req, res, next) => {
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
         { model: VehicleImage, as: "images" },
-        { model: Facility, as: "facility" }
+        { model: Facility, as: "facility" },
+        { model: Management, as: "management" }
       ],
     });
     res.status(200).json(vehicles);
@@ -77,7 +79,8 @@ exports.getVehicleByPlate = async (req, res, next) => {
         { model: Model, as: "model", include: [{ model: Brand, as: "brand" }] },
         { model: VehicleType, as: "type" },
         { model: VehicleImage, as: "images" },
-        { model: Facility, as: "facility" }
+        { model: Facility, as: "facility" },
+        { model: Management, as: "management" }
       ],
     });
 
@@ -164,7 +167,8 @@ exports.updateVehicle = async (req, res, next) => {
             include: [{ model: Brand, as: "brand" }],
           },
           { model: VehicleType, as: "type" },
-          { model: VehicleImage, as: "images" }
+          { model: VehicleImage, as: "images" },
+          { model: Management, as: "management" }
         ],
       });
       return res.status(200).json(updatedVehicle);
