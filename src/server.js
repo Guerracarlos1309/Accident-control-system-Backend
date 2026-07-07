@@ -49,6 +49,16 @@ async function startServer() {
         });
         console.log('Successfully added scheduled_date column to inspection table.');
       }
+      // Check users table for must_change_password column
+      const usersTableDefinition = await queryInterface.describeTable('users');
+      if (!usersTableDefinition.must_change_password) {
+        await queryInterface.addColumn('users', 'must_change_password', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+        console.log('Successfully added must_change_password column to users table.');
+      }
     } catch (columnError) {
       console.warn('Could not inspect/add columns:', columnError.message);
     }

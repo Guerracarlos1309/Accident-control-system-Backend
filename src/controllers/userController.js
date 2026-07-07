@@ -145,3 +145,57 @@ exports.deleteUser = async (req, res, next) => {
   }
 };
 
+/*
+  Admin resets a user's password and forces them to change it on next login
+ */
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ message: "La contraseña debe tener al menos 4 caracteres" });
+    }
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Set new password and mark as must change on login
+    user.password = newPassword;
+    user.mustChangePassword = true;
+    await user.save();
+
+    return res.status(200).json({ message: "Contraseña restablecida correctamente. El usuario deberá cambiarla en su próximo inicio de sesión." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/*
+  User changes their own password (after forced reset by admin)
+ */
+exports.changeMyPassword = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ message: "La contraseña debe tener al menos 4 caracteres" });
+    }
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    await user.save();
+
+    return res.status(200).json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    next(error);
+  }
+};

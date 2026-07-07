@@ -49,6 +49,7 @@ exports.login = async (req, res, next) => {
         email: user.email,
         name: user.firstName,
         role: user.role ? user.role.name : null,
+        mustChangePassword: user.mustChangePassword || false,
       },
     });
 
