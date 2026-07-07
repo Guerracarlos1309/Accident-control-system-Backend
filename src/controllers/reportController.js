@@ -192,6 +192,7 @@ exports.downloadInspectionReport = async (req, res, next) => {
                   as: "model",
                   include: [{ model: Brand, as: "brand" }],
                 },
+                { model: Management, as: "management" },
               ],
             },
             {

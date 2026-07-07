@@ -13,6 +13,7 @@ const {
   Model,
   Brand,
   Facility,
+  Management,
   ProtectionInspection,
   ProtectionInspectionDetails,
   ProtectionEquipmentCategory,
@@ -88,6 +89,7 @@ exports.getInspectionById = async (req, res, next) => {
                   as: "model",
                   include: [{ model: Brand, as: "brand" }],
                 },
+                { model: Management, as: "management" },
               ],
             },
             {

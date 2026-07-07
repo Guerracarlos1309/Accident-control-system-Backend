@@ -1307,33 +1307,100 @@ class PdfGenerator {
       } else if (inspection.vehicleInspection) {
         const vehInsp = inspection.vehicleInspection;
         const checks = vehInsp.accessoryChecks || [];
+        const vehicle = vehInsp.vehicle || {};
 
         this.drawSectionHeader(doc, "Inspección de Unidad Vehicular");
-        const vehStr = vehInsp.vehicle
-          ? `${vehInsp.vehicle.brand || ""} ${vehInsp.vehicle.model ? vehInsp.vehicle.model.name : ""} (Placa: ${vehInsp.plate_id || vehInsp.vehicle.plate})`
-          : `Placa: ${vehInsp.plate_id}`;
 
-        const vehY = doc.y;
-        this.drawDataRow(doc, "Vehículo:", vehStr, 50, vehY, 250);
-        this.drawDataRow(
-          doc,
-          "Kilometraje:",
-          `${vehInsp.mileage || "0"} Km`,
-          315,
-          vehY,
-          230,
-        );
+        // --- Vehicle Info Card ---
+        const vehCardX = 50;
+        const vehCardW = doc.page.width - 100;
+        const ROW_H = 18;
+        const COL_LABEL_W = 110;
+        const COL1_X = vehCardX + 8;
+        const COL2_X = vehCardX + vehCardW / 2 + 4;
+        const halfW = vehCardW / 2 - 16;
 
-        doc.y = vehY + 20;
+        const plateStr = vehInsp.plateId || vehicle.plate || "-";
+        const brandModel = vehicle.model
+          ? `${vehicle.model.brand ? vehicle.model.brand.name : ""} ${vehicle.model.name}`.trim()
+          : "-";
+        const yearColor = `${vehicle.year || "-"}  |  Color: ${vehicle.color || "-"}`;
+        const vehicleType = vehicle.type ? vehicle.type.name : "-";
+        const managementStr = vehicle.management ? vehicle.management.name : "No asignada";
+        const mileageStr = `${vehInsp.mileage || "0"} Km`;
+
+        const vehCardStartY = doc.y;
+        // 3 rows: row1 Placa/Tipo | row2 Marca-Modelo/Año-Color | row3 Gerencia/Kilometraje
+        const vehCardH = ROW_H * 3;
+
+        doc.rect(vehCardX, vehCardStartY, vehCardW, vehCardH).lineWidth(0.5).strokeColor("#D1D5DB").stroke();
+
+        // Row 1: Placa | Tipo
+        doc.rect(vehCardX, vehCardStartY, vehCardW, ROW_H).fill("#EFF6FF");
+        doc.moveTo(vehCardX + vehCardW / 2, vehCardStartY).lineTo(vehCardX + vehCardW / 2, vehCardStartY + ROW_H).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Placa:", COL1_X, vehCardStartY + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica-Bold").fontSize(9).fillColor("#005C9E").text(plateStr.toUpperCase(), COL1_X + COL_LABEL_W, vehCardStartY + 4, { width: halfW - COL_LABEL_W });
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Tipo:", COL2_X, vehCardStartY + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111").text(vehicleType, COL2_X + COL_LABEL_W, vehCardStartY + 5, { width: halfW - COL_LABEL_W });
+
+        // Row 2: Marca-Modelo | Año/Color
+        const y2 = vehCardStartY + ROW_H;
+        doc.moveTo(vehCardX, y2).lineTo(vehCardX + vehCardW, y2).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.moveTo(vehCardX + vehCardW / 2, y2).lineTo(vehCardX + vehCardW / 2, y2 + ROW_H).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Marca / Modelo:", COL1_X, y2 + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111").text(brandModel, COL1_X + COL_LABEL_W, y2 + 5, { width: halfW - COL_LABEL_W });
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Año / Color:", COL2_X, y2 + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111").text(yearColor, COL2_X + COL_LABEL_W, y2 + 5, { width: halfW - COL_LABEL_W });
+
+        // Row 3: Gerencia | Kilometraje
+        const y3 = y2 + ROW_H;
+        doc.moveTo(vehCardX, y3).lineTo(vehCardX + vehCardW, y3).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.rect(vehCardX, y3, vehCardW, ROW_H).fill("#F9FAFB");
+        doc.moveTo(vehCardX + vehCardW / 2, y3).lineTo(vehCardX + vehCardW / 2, y3 + ROW_H).lineWidth(0.5).strokeColor("#E5E7EB").stroke();
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Gerencia / Cuadrilla:", COL1_X, y3 + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111").text(managementStr, COL1_X + COL_LABEL_W, y3 + 5, { width: halfW - COL_LABEL_W });
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("#555555").text("Kilometraje:", COL2_X, y3 + 5, { width: COL_LABEL_W });
+        doc.font("Helvetica").fontSize(8).fillColor("#111111").text(mileageStr, COL2_X + COL_LABEL_W, y3 + 5, { width: halfW - COL_LABEL_W });
+
+        doc.y = vehCardStartY + vehCardH + 14;
+
+        // --- Accessories Table ---
+        // Columns: Nro | Accesorio | ¿Existe? | Sirve | No Sirve | Cantidad | Observaciones
+        const colX = {
+          nro:    50,
+          name:   82,
+          exists: 285,
+          good:   335,
+          bad:    375,
+          qty:    415,
+          obs:    455,
+        };
+        const colW = {
+          nro:    32,
+          name:   200,
+          exists: 50,
+          good:   40,
+          bad:    40,
+          qty:    40,
+          obs:    doc.page.width - 100 - 405,
+        };
 
         const tableStartY = doc.y;
-        doc.rect(50, tableStartY, doc.page.width - 100, 16).fill("#005C9E");
-        doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#FFFFFF");
-        doc.text("ACCESORIO / ELEMENTO DE SEGURIDAD", 55, tableStartY + 4);
-        doc.text("ESTATUS", 300, tableStartY + 4);
-        doc.text("OBSERVACIONES GENERALES", 380, tableStartY + 4);
+        const headerH = 22;
 
-        doc.y = tableStartY + 16;
+        // Table header
+        doc.rect(50, tableStartY, doc.page.width - 100, headerH).fill("#005C9E");
+        doc.font("Helvetica-Bold").fontSize(7).fillColor("#FFFFFF");
+        doc.text("NRO", colX.nro + 2, tableStartY + 4,  { width: colW.nro,    align: "center" });
+        doc.text("ACCESORIO / EQUIPO DE SEGURIDAD", colX.name, tableStartY + 4, { width: colW.name });
+        doc.text("¿EXISTE?", colX.exists, tableStartY + 4, { width: colW.exists, align: "center" });
+        doc.text("SIRVE",    colX.good,   tableStartY + 4, { width: colW.good,   align: "center" });
+        doc.text("NO SIRVE", colX.bad,    tableStartY + 4, { width: colW.bad,    align: "center" });
+        doc.text("CANT.",    colX.qty,    tableStartY + 4, { width: colW.qty,    align: "center" });
+        doc.text("OBSERVACIONES TÉCNICAS", colX.obs, tableStartY + 4, { width: colW.obs });
+
+        doc.y = tableStartY + headerH;
+
         checks.forEach((chk, idx) => {
           if (doc.y > doc.page.height - 65) {
             doc.addPage();
@@ -1342,37 +1409,12 @@ class PdfGenerator {
 
           const rowY = doc.y;
           const rowHeight = 18;
-          if (idx % 2 === 1) {
-            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill("#F9FAFB");
-          }
-          doc
-            .rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5)
-            .fill("#E5E7EB");
 
-          doc.font("Helvetica").fontSize(7.5).fillColor("#333333");
-          doc.text(
-            chk.accessory
-              ? chk.accessory.name
-              : `Accesorio ID: ${chk.accessoryId}`,
-            55,
-            rowY + 5,
-          );
-
-          // chk.status is stored as boolean in the DB
-          const isFunctional = chk.status === true || chk.status === 1;
-          const statusLabel = isFunctional ? "ÓPTIMO" : "CON FALLA";
-          doc.font("Helvetica-Bold").fillColor(isFunctional ? "green" : "red");
-          doc.text(statusLabel, 300, rowY + 5);
-
-          // observations is stored as serialized "B:x|M:x|NE:x|Obs:text" — extract human-readable part
-          let obsDisplay = "-";
+          // Parse serialized observations "B:x|M:x|NE:x|Obs:text"
+          let buenos = 0, malos = 0, noExiste = 0, obsComment = "";
           const rawObs = chk.observations || "";
+
           if (rawObs.includes("|")) {
-            // Parse serialized format
-            let buenos = 0,
-              malos = 0,
-              noExiste = 0,
-              obsComment = "";
             rawObs.split("|").forEach((part) => {
               const [key, ...rest] = part.split(":");
               const val = rest.join(":");
@@ -1381,24 +1423,74 @@ class PdfGenerator {
               else if (key === "NE") noExiste = parseInt(val) || 0;
               else if (key === "Obs") obsComment = val || "";
             });
-            if (noExiste === 1) {
-              obsDisplay = "NO EXISTE";
-            } else {
-              const parts = [];
-              if (buenos > 0) parts.push(`Sirven: ${buenos}`);
-              if (malos > 0) parts.push(`Fallas: ${malos}`);
-              if (obsComment) parts.push(obsComment);
-              obsDisplay = parts.join(" | ") || "-";
-            }
-          } else if (rawObs.trim()) {
-            obsDisplay = rawObs.trim();
+          } else {
+            // Legacy: derive from status boolean
+            const isFunctional = chk.status === true || chk.status === 1;
+            buenos = isFunctional ? 1 : 0;
+            malos  = isFunctional ? 0 : 1;
+            obsComment = rawObs.trim();
           }
 
-          doc.font("Helvetica").fillColor("#555555");
-          doc.text(obsDisplay, 380, rowY + 5, { width: 160 });
+          const exists = noExiste === 0;
+          const qty = exists ? (buenos + malos) : 0;
+          const obsDisplay = !exists
+            ? "NO EXISTE EN LA UNIDAD"
+            : (obsComment || "Sin observaciones.");
+
+          // Row background (alternating rows)
+          if (idx % 2 === 1) {
+            doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill("#F9FAFB");
+          }
+          
+          // Row divider line
+          doc.rect(50, rowY + rowHeight - 0.5, doc.page.width - 100, 0.5).fill("#E5E7EB");
+
+          // Nro
+          doc.font("Helvetica").fontSize(7).fillColor("#888888");
+          doc.text(String(idx + 1).padStart(2, "0"), colX.nro + 2, rowY + 5, { width: colW.nro, align: "center" });
+
+          // Name
+          doc.font("Helvetica").fontSize(7.5).fillColor("#1F2937");
+          doc.text(chk.accessory ? chk.accessory.name : `ID: ${chk.accessoryId}`, colX.name, rowY + 5, { width: colW.name });
+
+          // ¿Existe? (Badge style without complex strokes)
+          if (exists) {
+            doc.rect(colX.exists + 8, rowY + 4, 34, 11).fill("#D1FAE5");
+            doc.font("Helvetica-Bold").fontSize(7).fillColor("#059669");
+            doc.text("SÍ", colX.exists + 8, rowY + 6, { width: 34, align: "center" });
+          } else {
+            doc.rect(colX.exists + 8, rowY + 4, 34, 11).fill("#FEE2E2");
+            doc.font("Helvetica-Bold").fontSize(7).fillColor("#DC2626");
+            doc.text("NO", colX.exists + 8, rowY + 6, { width: 34, align: "center" });
+          }
+
+          // Sirve
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor(exists && buenos > 0 ? "#059669" : "#AAAAAA");
+          doc.text(exists ? String(buenos) : "-", colX.good, rowY + 5, { width: colW.good, align: "center" });
+
+          // No Sirve
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor(exists && malos > 0 ? "#DC2626" : "#AAAAAA");
+          doc.text(exists ? String(malos) : "-", colX.bad, rowY + 5, { width: colW.bad, align: "center" });
+
+          // Cantidad
+          doc.font("Helvetica-Bold").fontSize(7.5).fillColor(exists ? "#111111" : "#AAAAAA");
+          doc.text(exists ? String(qty) : "-", colX.qty, rowY + 5, { width: colW.qty, align: "center" });
+
+          // Observaciones
+          doc.font("Helvetica").fontSize(7).fillColor(!exists ? "#DC2626" : "#555555");
+          doc.text(obsDisplay, colX.obs, rowY + 5, { width: colW.obs });
 
           doc.y = rowY + rowHeight;
         });
+
+        if (checks.length === 0) {
+          const emptyY = doc.y;
+          doc.rect(50, emptyY, doc.page.width - 100, 22).fill("#F9FAFB");
+          doc.font("Helvetica-Oblique").fontSize(8).fillColor("#888888");
+          doc.text("No se registraron verificaciones de accesorios en esta auditoría.", 50, emptyY + 7, { width: doc.page.width - 100, align: "center" });
+          doc.y = emptyY + 22;
+        }
+
       } else if (inspection.protectionInspection) {
         const protInsp = inspection.protectionInspection;
         const details = (protInsp.details || []).slice();
