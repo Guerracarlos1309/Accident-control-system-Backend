@@ -66,23 +66,29 @@ exports.getEmployeeByPersonalNumber = async (req, res, next) => {
 exports.createEmployee = async (req, res, next) => {
   try {
     const employeeData = req.body;
-    
-    if (
-      employeeData.email === '' || 
-      employeeData.email === null || 
-      employeeData.email === undefined || 
-      (typeof employeeData.email === 'string' && (employeeData.email.trim() === '' || employeeData.email.trim().toLowerCase() === 'null' || employeeData.email.trim().toLowerCase() === 'undefined'))
-    ) {
-      employeeData.email = null;
-    }
-    if (
-      employeeData.phone === '' || 
-      employeeData.phone === null || 
-      employeeData.phone === undefined || 
-      (typeof employeeData.phone === 'string' && (employeeData.phone.trim() === '' || employeeData.phone.trim().toLowerCase() === 'null' || employeeData.phone.trim().toLowerCase() === 'undefined'))
-    ) {
-      employeeData.phone = null;
-    }
+
+    // Helper: convert empty / "null" / "undefined" strings → null
+    const nullifyEmpty = (val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === 'string' && (val.trim() === '' || val.trim().toLowerCase() === 'null' || val.trim().toLowerCase() === 'undefined')) return null;
+      return val;
+    };
+
+    // Clean optional / FK fields that arrive as empty strings from FormData
+    employeeData.email        = nullifyEmpty(employeeData.email);
+    employeeData.phone        = nullifyEmpty(employeeData.phone);
+    employeeData.jobTitleId   = nullifyEmpty(employeeData.jobTitleId);
+    employeeData.managementId = nullifyEmpty(employeeData.managementId);
+    employeeData.occupationId = nullifyEmpty(employeeData.occupationId);
+    employeeData.maritalStatus  = nullifyEmpty(employeeData.maritalStatus);
+    employeeData.dominantHand   = nullifyEmpty(employeeData.dominantHand);
+    employeeData.birthDate      = nullifyEmpty(employeeData.birthDate);
+    employeeData.hireDate       = nullifyEmpty(employeeData.hireDate);
+    employeeData.homeAddress    = nullifyEmpty(employeeData.homeAddress);
+    employeeData.birthPlace     = nullifyEmpty(employeeData.birthPlace);
+    employeeData.referencePoint = nullifyEmpty(employeeData.referencePoint);
+    employeeData.educationLevel = nullifyEmpty(employeeData.educationLevel);
+    employeeData.officePhone    = nullifyEmpty(employeeData.officePhone);
 
     if (req.file) {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
@@ -105,7 +111,7 @@ exports.createEmployee = async (req, res, next) => {
     }
     
     // Basic server-side validation for required fields
-    const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'managementId', 'jobTitleId', 'occupationId'];
+    const required = ['personalNumber', 'idCard', 'firstName', 'lastName', 'managementId', 'occupationId'];
     for(const field of required) {
       if(!employeeData[field]) {
         return res.status(400).json({ message: "Se deben enviar todos los datos obligatorios marcados con (*)" });
@@ -158,23 +164,29 @@ exports.updateEmployee = async (req, res, next) => {
   try {
     const { personal_number } = req.params;
     const employeeData = req.body;
-    
-    if (
-      employeeData.email === '' || 
-      employeeData.email === null || 
-      employeeData.email === undefined || 
-      (typeof employeeData.email === 'string' && (employeeData.email.trim() === '' || employeeData.email.trim().toLowerCase() === 'null' || employeeData.email.trim().toLowerCase() === 'undefined'))
-    ) {
-      employeeData.email = null;
-    }
-    if (
-      employeeData.phone === '' || 
-      employeeData.phone === null || 
-      employeeData.phone === undefined || 
-      (typeof employeeData.phone === 'string' && (employeeData.phone.trim() === '' || employeeData.phone.trim().toLowerCase() === 'null' || employeeData.phone.trim().toLowerCase() === 'undefined'))
-    ) {
-      employeeData.phone = null;
-    }
+
+    // Helper: convert empty / "null" / "undefined" strings → null
+    const nullifyEmpty = (val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === 'string' && (val.trim() === '' || val.trim().toLowerCase() === 'null' || val.trim().toLowerCase() === 'undefined')) return null;
+      return val;
+    };
+
+    // Clean optional / FK fields that arrive as empty strings from FormData
+    employeeData.email        = nullifyEmpty(employeeData.email);
+    employeeData.phone        = nullifyEmpty(employeeData.phone);
+    employeeData.jobTitleId   = nullifyEmpty(employeeData.jobTitleId);
+    employeeData.managementId = nullifyEmpty(employeeData.managementId);
+    employeeData.occupationId = nullifyEmpty(employeeData.occupationId);
+    employeeData.maritalStatus  = nullifyEmpty(employeeData.maritalStatus);
+    employeeData.dominantHand   = nullifyEmpty(employeeData.dominantHand);
+    employeeData.birthDate      = nullifyEmpty(employeeData.birthDate);
+    employeeData.hireDate       = nullifyEmpty(employeeData.hireDate);
+    employeeData.homeAddress    = nullifyEmpty(employeeData.homeAddress);
+    employeeData.birthPlace     = nullifyEmpty(employeeData.birthPlace);
+    employeeData.referencePoint = nullifyEmpty(employeeData.referencePoint);
+    employeeData.educationLevel = nullifyEmpty(employeeData.educationLevel);
+    employeeData.officePhone    = nullifyEmpty(employeeData.officePhone);
 
     if (req.file) {
       employeeData.imageUrl = `/uploads/employees/${req.file.filename}`;
