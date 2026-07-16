@@ -1,0 +1,438 @@
+table trabajador {
+  id int [unique]
+  nro_personal varchar(20) [primary key, unique]
+  cedula varchar(20) [unique, not null]
+  nombres varchar(50) [not null]
+  apellidos varchar(50) [not null]
+  telefono varchar(20) [unique]
+  sexo char(1)
+  fecha_nacimiento date
+  correo varchar(70) [unique]
+  estatus int [default: 1]
+  estado_civil int
+  brazo_agil int
+  lugar_nacimiento varchar(100)
+  direccion_habitacion varchar(255)
+  nivel_educativo varchar(50)
+  fecha_ingreso date
+  telefono_oficina varchar(20)
+  id_departamento int [ref: > departamento.id]
+  id_cargo int [ref: > cargo.id]
+  id_ocupacion int [ref: > ocupacion.id]
+  url_imagen varchar(255)
+  punto_referencia varchar(255)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table ocupacion {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table departamento {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  descripcion text
+}
+
+table cargo {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(150)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table tipo_accidente {
+  id int [primary key, increment, unique]
+  codigo varchar(50)
+  nombre varchar(100) [not null]
+  descripcion varchar(100)
+  id_padre int [ref: > tipo_accidente.id]
+}
+
+table magnitud {
+  id int [primary key, increment, unique]
+  valor int [not null]
+  descripcion varchar(50)
+}
+
+table periodo {
+  id int [primary key, increment, unique]
+  anualidad int [not null]
+}
+
+table estado {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+}
+
+table municipio {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  id_estado int [ref: > estado.id]
+}
+
+table parroquia {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  id_municipio int [ref: > municipio.id]
+}
+
+table ubicacion {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  id_parroquia int [ref: > parroquia.id]
+}
+
+table tipo_instalacion {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  descripcion varchar(200)
+}
+
+table sede {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  coordenadas varchar(500)
+  id_ubicacion int [ref: > ubicacion.id]
+  id_tipo_instalacion int [ref: > tipo_instalacion.id]
+  nivel_tension varchar(10)
+  punto_referencia varchar(255)
+  estatus int [default: 1]
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table imagen_sede {
+  id int [primary key, increment, unique]
+  url_imagen varchar(500) [not null]
+  id_sede int [ref: > sede.id]
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table codigo_inspeccion_sede {
+  id int [primary key, increment, unique]
+  id_sede int [ref: > sede.id]
+  tipo varchar(2) [not null]
+  secuencia int [not null]
+  año int [not null]
+  codigo varchar(50) [unique, not null]
+  fecha date
+  fecha_inspeccion date
+  nro_memorando varchar(100)
+  fecha_memorando date
+  ruta_pdf varchar(255)
+  ruta_pdf_2 varchar(255)
+  notas text
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table centro_medico {
+  id int [primary key, increment, unique]
+  nombre varchar(150) [not null]
+  direccion varchar(255)
+  id_parroquia int [ref: > parroquia.id]
+}
+
+table accidente {
+  id int [primary key, increment, unique]
+  fecha_accidente date [not null]
+  hora_accidente time [not null]
+  descripcion text
+  id_departamento int [ref: > departamento.id]
+  nro_expediente_inpsasel varchar(20) [unique]
+  estatus int [default: 1]
+  id_sede int [ref: > sede.id]
+  id_tipo_accidente int [ref: > tipo_accidente.id]
+  id_periodo int [ref: > periodo.id]
+  id_magnitud int [ref: > magnitud.id]
+  id_usuario int [ref: > usuario.id]
+  id_agente_daño int [ref: > agente_daño.id]
+  id_tipo_contacto int [ref: > tipo_contacto.id]
+  detalles_direccion_personalizada varchar(255)
+  nombre_centro_medico varchar(150)
+  id_centro_medico int [ref: > centro_medico.id]
+  direccion_centro_medico varchar(255)
+  observaciones_medicas text
+  observaciones_globales text
+  id_estatus_proceso int [ref: > estatus_inspeccion.id]
+  id_parroquia int [ref: > parroquia.id]
+  actividad text
+  tipo_trabajo varchar(50)
+  codigo_peligro varchar(50)
+  codigo_exposicion_contacto varchar(50)
+  codigo_clase_afectacion varchar(50)
+  codigo_sujeto_afectacion varchar(50)
+  afectacion_activos_proceso varchar(50)
+  nro_control_accidente varchar(50)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table documentos_expediente {
+  id int [primary key, increment, unique]
+  nombre varchar(20) [not null]
+  descripcion varchar(50)
+}
+
+table check_documentos_accidente {
+  id int [primary key, increment, unique]
+  id_accidente int [ref: > accidente.id]
+  id_documento int [ref: > documentos_expediente.id]
+  entregado boolean [default: false]
+  fecha_recepcion date
+  observacion varchar(200)
+}
+
+table detalle_afectacion_accidente {
+  id int [primary key, increment, unique]
+  id_accidente int [ref: > accidente.id]
+  id_afectacion int [ref: > afectacion.id]
+  id_sujeto_afectacion int [ref: > sujeto_afectacion.id]
+  id_magnitud int [ref: > magnitud.id]
+}
+
+table sujeto_afectacion {
+  id int [primary key, increment, unique]
+  codigo varchar(50) [not null]
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+  id_padre int [ref: > sujeto_afectacion.id]
+}
+
+table afectacion {
+  id int [primary key, increment, unique]
+  codigo varchar(50) [not null]
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+  id_padre int [ref: > afectacion.id]
+}
+
+table tipo_contacto {
+  id int [primary key, increment, unique]
+  codigo varchar(50)
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+  id_padre int [ref: > tipo_contacto.id]
+}
+
+table agente_daño {
+  id int [primary key, increment, unique]
+  codigo varchar(50)
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+  id_padre int [ref: > agente_daño.id]
+}
+
+table trabajador_accidente {
+  id int [primary key, increment, unique]
+  id_accidente int [ref: > accidente.id]
+  id_trabajador varchar(20) [ref: > trabajador.nro_personal]
+  id_tipo_lesion int [ref: > tipo_lesion.id]
+  dias_reposo int
+  id_magnitud int [ref: > magnitud.id]
+  area_afectada varchar(50)
+  naturaleza_lesion varchar(50)
+  nivel_lesion varchar(50)
+  consecuencia_lesion varchar(50)
+}
+
+table tipo_lesion {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+}
+
+table testigo_accidente {
+  id int [primary key, increment]
+  id_accidente int [ref: > accidente.id]
+  nombre varchar(150) [not null]
+  cedula varchar(20)
+  telefono varchar(20)
+}
+
+table usuario {
+  id int [primary key, increment, unique]
+  usuario varchar(50) [unique, not null]
+  correo varchar(70) [unique]
+  nombres varchar(50)
+  apellidos varchar(50)
+  contraseña varchar(500) [not null]
+  estatus int [default: 1]
+  ultimo_inicio_sesion datetime
+  id_rol int [ref: > rol.id]
+  debe_cambiar_contraseña boolean [default: false]
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table rol {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table inspeccion {
+  id int [primary key, increment, unique]
+  fecha date [not null]
+  coordenadas varchar(50)
+  id_sede int [ref: > sede.id]
+  id_trabajador varchar(10) [ref: > trabajador.nro_personal]
+  observaciones varchar(1000)
+  nro_inspeccion varchar(20)
+  id_estatus int [ref: > estatus_inspeccion.id]
+  es_programada boolean [not null, default: false]
+  fecha_programada date
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table estatus_inspeccion {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+}
+
+table imagen_inspeccion {
+  id int [primary key, increment, unique]
+  url_imagen varchar(500) [not null]
+  id_inspeccion int [ref: > inspeccion.id]
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table inspeccion_extintor {
+  id int [primary key, increment, unique]
+  id_inspeccion int [ref: > inspeccion.id]
+  codigo_extintor varchar(20)
+  fecha_inspeccion date
+  id_responsable varchar(10) [ref: > trabajador.nro_personal]
+  observaciones_generales varchar(500)
+}
+
+table detalle_extintor {
+  id int [primary key, increment, unique]
+  id_tipo_agente int [ref: > tipo_agente.id]
+  id_inspeccion_extintor int [ref: > inspeccion_extintor.id]
+  nro_extintor varchar(20)
+  capacidad varchar(20)
+  fecha_recarga date
+  fecha_vencimiento date
+  estado_general varchar(20)
+  observaciones varchar(100)
+}
+
+table tipo_agente {
+  id int [primary key, increment, unique]
+  nombre varchar(30) [not null]
+  descripcion varchar(50)
+}
+
+table inspeccion_vehiculo {
+  id int [primary key, increment, unique]
+  placa varchar [ref: > vehiculo.placa]
+  id_inspeccion int [ref: > inspeccion.id]
+  descripcion varchar(150)
+}
+
+table detalle_inspeccion {
+  id int [primary key, increment, unique]
+  id_inspeccion_vehiculo int [ref: > inspeccion_vehiculo.id]
+  id_accesorio int [ref: > accesorios_vehiculo.id]
+  estado boolean [default: true]
+  cantidad int [default: 1]
+  observaciones varchar(150)
+}
+
+table marca {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+}
+
+table modelo {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+  id_marca int [ref: > marca.id]
+}
+
+table tipo_vehiculo {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(50)
+}
+
+table vehiculo {
+  id int [unique]
+  placa varchar [primary key, unique]
+  id_modelo int [ref: > modelo.id]
+  id_tipo_vehiculo int [ref: > tipo_vehiculo.id]
+  color varchar(30)
+  año int
+  id_sede int [ref: > sede.id]
+  id_departamento int [ref: > departamento.id]
+}
+
+table imagen_vehiculo {
+  id int [primary key, increment]
+  placa varchar [ref: > vehiculo.placa]
+  url_imagen varchar(255) [not null]
+}
+
+table accesorios_vehiculo {
+  id int [primary key, increment, unique]
+  nombre varchar(30) [not null]
+}
+
+table tipo_equipo {
+  id int [primary key, increment, unique]
+  nombre varchar(50) [not null]
+  descripcion varchar(100)
+}
+
+table categoria_equipamiento {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  id_tipo_equipo int [ref: > tipo_equipo.id]
+  descripcion varchar(100)
+}
+
+table equipo {
+  id int [primary key, increment, unique]
+  nombre varchar(100) [not null]
+  id_categoria int [ref: > categoria_equipamiento.id]
+  cantidad_total int [default: 0]
+  cantidad_operativa int [default: 0]
+  ultima_revision date
+  descripcion varchar(200)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table inspeccion_equipo {
+  id int [primary key, increment, unique]
+  id_inspeccion int [ref: > inspeccion.id]
+  id_responsable varchar(10) [ref: > trabajador.nro_personal]
+  observaciones varchar(500)
+  creado_en datetime [not null]
+  actualizado_en datetime [not null]
+}
+
+table detalles_inspeccion_equipo {
+  id int [primary key, increment, unique]
+  id_inspeccion_equipo int [ref: > inspeccion_equipo.id]
+  id_categoria int [ref: > categoria_equipamiento.id]
+  total_equipo int
+  operativo int
+  observaciones varchar(200)
+}

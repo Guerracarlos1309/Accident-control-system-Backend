@@ -1,0 +1,446 @@
+// Recursos Humanos y usuarios
+Table employee {
+  id int [unique]
+  personal_number varchar(20) [pk, unique]
+  id_card varchar(20) [unique, not null]
+  first_name varchar(50) [not null]
+  last_name varchar(50) [not null]
+  phone varchar(20) [unique]
+  gender char(1)
+  birth_date date 
+  email varchar(70) [unique]
+  status int [default: 1]
+  marital_status int
+  dominant_hand int 
+  management_id int [ref: > management.id]
+  job_title_id int [ref: > job_title.id]
+  birth_place varchar(100)
+  occupation_id int [ref: > occupation.id]
+  education_level varchar(50)
+  image_url varchar(255)
+  reference_point varchar(255)
+  hire_date date
+  office_phone varchar(20)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table occupation {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table management {
+  id int [pk, unique]
+  name varchar(100) [not null]
+  description text
+}
+
+Table job_title {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(150)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table user {
+  id int [pk, unique]
+  username varchar(50) [unique, not null]
+  email varchar(70) [unique]
+  first_name varchar(50)
+  last_name varchar(50)
+  password varchar(500) [not null]
+  role_id int [ref: > role.id]
+  status int [default: 1]
+  must_change_password boolean [default: false]
+  last_login datetime
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table role {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(100)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+// Localidades y geografia
+Table state {
+  id int [pk, unique]
+  name varchar(50) [not null]
+}
+
+Table city {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  state_id int [ref: > state.id]
+}
+
+Table parish {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  city_id int [ref: > city.id]
+}
+
+Table location {
+  id int [pk, unique]
+  name varchar(100) [not null]
+  parish_id int [ref: > parish.id]
+}
+
+table facility {
+  id int [pk, unique]
+  name varchar(100) [not null]
+  coordinates varchar(500)
+  location_id int [ref: > location.id]
+  installation_type_id int [ref: > installation_type.id]
+  voltage_level varchar(10)
+  reference_point varchar(255)
+  status int [default: 1]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+table installation_type {
+  id int [pk, unique]
+  name varchar(100) [not null]
+  description varchar(200)
+}
+
+Table facility_image {
+  id int [pk, unique]
+  facility_id int [ref: > facility.id]
+  image_url varchar(500) [not null]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+// Accidentes y incidentes
+Table accident {
+  id int [pk, unique]
+  accident_date date [not null]
+  accident_time time [not null]
+  inpsasel_file_number varchar(20) [unique]
+  status int [default: 1]
+  facility_id int [ref: > facility.id]
+  accident_type_id int [ref: > accident_type.id] 
+  period_id int [ref: > period.id]
+  magnitude_id int [ref: > magnitude.id]
+  user_id int [ref: > user.id]
+  damage_agent_id int [ref: > damage_agent.id]
+  contact_type_id int [ref: > contact_type.id]
+  description text
+  custom_address_details varchar(255)
+  medical_center_name varchar(150)
+  medical_center_id int [ref: > medical_center.id]
+  medical_center_address varchar(255)
+  medical_observations text
+  global_observations text
+  circuit_name varchar(100) 
+  total_customers_affected int
+  load_loss decimal
+  management_id int [ref: > management.id]
+  process_status_id int [ref: > inspection_status.id] // Para flujo de trabajo 
+  parish_id int [ref: > parish.id]
+  activity text
+  work_type varchar(50)
+  hazard_code varchar(50)
+  contact_exposure_code varchar(50)
+  affectation_class_code varchar(50)
+  affectation_subject_code varchar(50)
+  assets_process_affectation varchar(50)
+  accident_control_number varchar(50)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table medical_center {
+  id int [pk, unique]
+  name varchar(150) [not null]
+  address varchar(255)
+  parish_id int [ref: > parish.id]
+}
+
+Table accident_witness {
+  id int [pk, increment]
+  accident_id int [ref: > accident.id]
+  name varchar(150) [not null]
+  id_card varchar(20)
+  phone varchar(20)
+}
+
+Table accident_type {
+  id int [pk, unique]
+  code varchar(50)
+  name varchar(100) [not null]
+  parent_id int [ref: > accident_type.id] 
+  description varchar(100)
+}
+
+Table magnitude {
+  id int [pk, unique]
+  value int [not null]
+  description varchar(50)
+}
+
+Table period {
+  id int [pk, unique]
+  annuality int [not null]
+}
+
+Table file_documents {
+  id int [pk, unique]
+  name varchar(20) [not null]
+  description varchar(50)
+}
+
+Table accident_document_check {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  document_id int [ref: > file_documents.id]
+  delivered boolean [default: false]
+  received_date date
+  observation varchar(200)
+}
+
+Table accident_affectation_detail {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  affectation_id int [ref: > affectation.id]
+  affectation_subject_id int [ref: > affectation_subject.id]
+  magnitude_id int [ref: > magnitude.id]
+}
+
+Table affectation_subject {
+  id int [pk, unique]
+  code varchar(50) [not null]
+  name varchar(50) [not null]
+  parent_id int [ref: > affectation_subject.id]
+  description varchar(100)
+}
+
+Table affectation {
+  id int [pk, unique]
+  code varchar(50) [not null]
+  name varchar(50) [not null]
+  parent_id int [ref: > affectation.id]
+  description varchar(100)
+}
+
+Table contact_type {
+  id int [pk, unique]
+  code varchar(50)
+  name varchar(50) [not null]
+  parent_id int [ref: > contact_type.id]
+  description varchar(100)
+}
+
+Table damage_agent {
+  id int [pk, unique]
+  code varchar(50)
+  name varchar(50) [not null]
+  parent_id int [ref: > damage_agent.id]
+  description varchar(100)
+}
+
+Table employee_accident {
+  id int [pk, unique]
+  accident_id int [ref: > accident.id]
+  employee_id varchar(20) [ref: > employee.personal_number]
+  injury_type_id int [ref: > injury_type.id]
+  rest_days int 
+  magnitude_id int [ref: > magnitude.id]
+  affected_area varchar(50)
+  injury_nature varchar(50)
+  injury_level varchar(50)
+  injury_consequence varchar(50)
+}
+
+Table injury_type {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+// Inspecciones
+Table inspection {
+  id int [pk, unique]
+  date date [not null]
+  coordinates varchar(50)
+  facility_id int [ref: > facility.id]
+  employee_id varchar(10) [ref: > employee.personal_number]
+  observations varchar(1000) 
+  status_id int [ref: > inspection_status.id]
+  inspection_number varchar(20)
+  is_scheduled boolean [not null, default: false]
+  scheduled_date date
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table inspection_status {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table inspection_image {
+  id int [pk, unique]
+  image_url varchar(500) [not null]
+  inspection_id int [ref: > inspection.id]
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+Table extinguisher_inspection {
+  id int [pk, unique]
+  inspection_id int [ref: > inspection.id]
+  extinguisher_code varchar(20)
+  inspection_date date
+  responsible_id varchar(10) [ref: > employee.personal_number]
+  general_observations varchar(500)
+}
+
+Table extinguisher_detail {
+  id int [pk, unique]
+  agent_type_id int [ref: > agent_type.id]
+  extinguisher_inspection_id int [ref: > extinguisher_inspection.id]
+  extinguisher_number varchar(20)
+  capacity varchar(20)
+  recharge_date date
+  expiration_date date
+  general_status varchar(20)
+  observations varchar(100)
+}
+
+Table agent_type {
+  id int [pk, unique]
+  name varchar(30) [not null]
+  description varchar(50)
+}
+
+Table vehicle_inspection {
+  id int [pk, unique]
+  plate_id varchar [ref: > vehicle.plate]
+  inspection_id int [ref: > inspection.id]
+  description varchar(150)
+}
+
+Table inspection_detail {
+  id int [pk, unique]
+  vehicle_inspection_id int [ref: > vehicle_inspection.id]
+  accessory_id int [ref: > vehicle_accessory.id]
+  status boolean [default: true]
+  quantity int [default: 1]
+  observations varchar(150)
+}
+
+table inspection_facility {
+  id int [pk, unique]
+  facility_id int [ref: > facility.id]
+  type varchar(2) [not null]
+  sequence int [not null]
+  year int [not null]
+  code varchar(50) [unique, not null]
+  report_date date
+  inspection_date date
+  memo_number varchar(100)
+  memo_date date
+  pdf_path varchar(255)
+  pdf_path_2 varchar(255)
+  notes text
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+// Vehiculos 
+Table brand {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table model {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  brand_id int [ref: > brand.id]
+  description varchar(50)
+}
+
+Table vehicle_type {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(50)
+}
+
+Table vehicle {
+  id int [unique]
+  plate varchar [pk, unique]
+  model_id int [ref: > model.id]
+  vehicle_type_id int [ref: > vehicle_type.id]
+  color varchar(30)
+  year int
+  facility_id int [ref: > facility.id]
+  management_id int [ref: > management.id]
+}
+
+Table vehicle_accessory {
+  id int [pk, unique]
+  name varchar(30) [not null]
+}
+
+Table vehicle_image {
+  id int [pk, unique]
+  plate_id varchar [ref: > vehicle.plate]
+  image_url varchar(255) [not null]
+}
+
+// Equipo de proteccion 
+table protection_type {
+  id int [pk, unique]
+  name varchar(50) [not null]
+  description varchar(100)
+}
+
+table protection_equipment_category {
+  id int [pk, unique] 
+  name varchar(100) [not null]
+  protection_type_id int [ref: > protection_type.id]
+  description varchar(100)
+}
+
+table protection_equipment {
+  id int [pk, unique]
+  name varchar(100) [not null]
+  category_id int [ref: > protection_equipment_category.id]
+  total_quantity int [default: 0]
+  operative_quantity int [default: 0]
+  last_update date
+  description varchar(200)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+table protection_inspection {
+  id int [pk, unique]
+  inspection_id int [ref: > inspection.id]
+  responsible_id varchar(10) [ref: > employee.personal_number]
+  observations varchar(500)
+  created_at datetime [not null]
+  updated_at datetime [not null]
+}
+
+table protection_inspection_details {
+  id int [pk, unique]
+  protection_inspection_id int [ref: > protection_inspection.id]
+  category_id int [ref: > protection_equipment_category.id]
+  total_checked int
+  operative int
+  observations varchar(200)
+}
